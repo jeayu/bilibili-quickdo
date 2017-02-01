@@ -1,19 +1,19 @@
 // ==UserScript==
 // @name         bilibili-H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.3
-// @description  双击全屏,全屏下'+','-'调节播放速度
+// @version      0.4
+// @description  双击全屏,'+','-'调节播放速度、f键全屏、w键网页全屏、p键暂停/播放、d键开启/关闭弹幕等
 // @author       jeayu
 // @match        *://www.bilibili.com/video/*
 // @match        *://bangumi.bilibili.com/*
 // ==/UserScript==
 
 /*
-v0.3 更新：
-兼容bangumi.bilibili.com
+v0.4 更新：
+调节播放速度不限定在全屏下，新增f键全屏、w键网页全屏、p键暂停/播放、d键开启/关闭弹幕
 
 历史更新：
-https://github.com/jeayu/bilibili-quickdo
+https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
  */
 
 (function() {
@@ -21,15 +21,69 @@ https://github.com/jeayu/bilibili-quickdo
 
     var playerQuickDo = {
         player: null,
-        animateTimer: null,
+        speedAnimateTimer: null,
         currentDocument: null,
-        fullscreenQD: function(player) {
+        isBangumi: false,
+        keyCode:{
+            '=+': 187,
+            '-_': 189,
+            '+': 107,
+            '-': 109,
+            '0': 48,
+            '1': 49,
+            '2': 50,
+            '3': 51,
+            '4': 52,
+            '5': 53,
+            '6': 54,
+            '7': 55,
+            '8': 56,
+            '9': 57,
+            'a': 65,
+            'b': 66,
+            'c': 67,
+            'd': 68,
+            'e': 69,
+            'f': 70,
+            'g': 71,
+            'h': 72,
+            'i': 73,
+            'j': 74,
+            'k': 75,
+            'l': 76,
+            'm': 77,
+            'n': 78,
+            'o': 79,
+            'p': 80,
+            'q': 81,
+            'r': 82,
+            's': 83,
+            't': 84,
+            'u': 85,
+            'v': 86,
+            'w': 87,
+            'x': 88,
+            'y': 89,
+            'z': 90
+        },
+        config: {
+            quickDo: {
+                'fullscreen': 'f',
+                'webFullscreen': 'w',
+                'addSpeed': '=+',
+                'subSpeed': '-_',
+                'danmu': 'd',
+                'play/pause': 'p',
+                'focus': 'o'
+            }
+        },
+        dblclickFullscreen: function() {
             var that = this;
-            player.dblclick(function() {
+            this.player.dblclick(function() {
                 that.currentDocument.find('.bilibili-player-iconfont.bilibili-player-iconfont-fullscreen').click();
             });
         },
-        speedQD: function(player) {
+        initSpeedStyle: function() {
             var that = this;
             var cssArr = [
                 '.bilibili-player.mode-fullscreen .bilibili-player-area .bilibili-player-video-wrap .bilibili-player-speedHint{width: 120px; height: 42px; line-height: 42px; padding: 15px 18px 15px 12px; font-size: 28px; margin-left: -75px; margin-top: -36px;}',
@@ -39,18 +93,46 @@ https://github.com/jeayu/bilibili-quickdo
             var html = '<div class="bilibili-player-speedHint" style="opacity: 0; display: none;"><span class="bilibili-player-speedHint-text">1</span></div>';
             this.addStyle(cssArr);
             this.currentDocument.find('div.bilibili-player-video-wrap').append(html);
+        },
+        getKeyCode: function(type){
+            return this.keyCode[this.config.quickDo[type]];
+        },
+        playerFocus: function(){
+            this.currentDocument.find('div.player').click();
+        },
+        bindKeydown: function(){
+            var that = this;
             this.currentDocument.keydown(function(e) {
-                if (!that.currentDocument.find('div#bilibiliPlayer.bilibili-player.relative.mode-fullscreen')[0])
+                if (that.currentDocument.find("input:focus, textarea:focus").length > 0)
                     return;
-                if (e.keyCode === 187 && player.playbackRate < 4) {
-                    player.playbackRate += 0.25;
-                    that.showSpeedAnimate(player);
-                } else if (e.keyCode === 189 && player.playbackRate > 0.5) {
-                    player.playbackRate -= 0.25;
-                    that.showSpeedAnimate(player);
-                }
-
+                that.keyHandler(e);
             });
+            if (this.isBangumi){
+                $(document).keydown(function(e){
+                    if ($(document).find("input:focus, textarea:focus").length > 0)
+                        return;
+                    that.keyHandler(e);
+                });
+            }
+        },
+        keyHandler: function(e){
+            var player = this.player[0];
+            if (e.keyCode === this.getKeyCode('addSpeed') && player.playbackRate < 4) {
+                player.playbackRate += 0.25;
+                this.showSpeedAnimate(player);
+            } else if (e.keyCode === this.getKeyCode('subSpeed') && player.playbackRate > 0.5) {
+                player.playbackRate -= 0.25;
+                this.showSpeedAnimate(player);
+            } else if (e.keyCode === this.getKeyCode('fullscreen')){
+                this.currentDocument.find('.bilibili-player-iconfont.bilibili-player-iconfont-fullscreen').click();
+            } else if (e.keyCode === this.getKeyCode('webFullscreen')){
+                this.currentDocument.find('.bilibili-player-iconfont.bilibili-player-iconfont-web-fullscreen').click();
+            } else if (e.keyCode === this.getKeyCode('danmu')){
+                this.currentDocument.find('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-danmaku').click();
+                this.currentDocument.find('.bilibili-player-danmaku-setting-lite-panel').hide();
+            } else if (e.keyCode === this.getKeyCode('play/pause')){
+                this.currentDocument.find('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-start').click();
+            }
         },
         addStyle: function(cssArr){
             var css = '<style type="text/css">';
@@ -66,10 +148,10 @@ https://github.com/jeayu/bilibili-quickdo
         },
         showSpeedAnimate: function(player) {
             var that = this;
-            clearTimeout(this.animateTimer);
+            clearTimeout(this.speedAnimateTimer);
             this.currentDocument.find('div.bilibili-player-speedHint').stop().css("opacity", 1).show();
             this.currentDocument.find('span.bilibili-player-speedHint-text')[0].innerHTML = player.playbackRate + ' X';
-            this.animateTimer = setTimeout(function() {
+            this.speedAnimateTimer = setTimeout(function() {
                 that.currentDocument.find('div.bilibili-player-speedHint').animate({
                     opacity: 0
                 }, 300, function() {
@@ -85,6 +167,7 @@ https://github.com/jeayu/bilibili-quickdo
             if (bangumi.exec(location.href) && iframePlayer[0]) {
                 try{
                     this.currentDocument = iframePlayer.contents();
+                    this.isBangumi = true;
                 } catch (e) {
                 }
             } else{
@@ -100,8 +183,9 @@ https://github.com/jeayu/bilibili-quickdo
                 var player = that.getH5Player();
                 if (player[0]) {
                     try {
-                        that.fullscreenQD(player);
-                        that.speedQD(player[0]);
+                        that.dblclickFullscreen();
+                        that.initSpeedStyle();
+                        that.bindKeydown();
                     } catch (e) {
                         console.log('playerQuickDo init error');
                     } finally {
