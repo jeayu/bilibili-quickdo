@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         bilibili-H5播放器快捷操作
+// @name         bilibili - H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.5
+// @version      0.6
 // @description  双击全屏,'+','-'调节播放速度、f键全屏、w键网页全屏、p键暂停/播放、d键开启/关闭弹幕等
 // @author       jeayu
 // @match        *://www.bilibili.com/video/*
@@ -9,8 +9,8 @@
 // ==/UserScript==
 
 /*
-v0.5 更新：
-可以配置自动播放、全屏和关闭弹幕;开启/关闭弹幕有提示
+v0.6 更新：
+K键上一P,L键下一P
 
 历史更新：
 https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
@@ -74,7 +74,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 'subSpeed': '-_',
                 'danmu': 'd',
                 'play/pause': 'p',
-                'focus': 'o'
+                'nextPart': 'l',
+                'prevPart': 'k'
             },
             auto: {
                 'switch': 1, //总开关 1开启 0关闭
@@ -138,7 +139,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             } else if (keyCode === this.getKeyCode('webFullscreen')){
                 this.currentDocument.find('.bilibili-player-iconfont.bilibili-player-iconfont-web-fullscreen').click();
             } else if (keyCode === this.getKeyCode('danmu')){
-                if ($('.video-state-danmaku-off')[0]){
+                if ($('.video-state-danmaku-off', this.currentDocument)[0]){
                     this.showInfoAnimate('弹幕开启');
                 } else {
                     this.showInfoAnimate('弹幕关闭');
@@ -147,6 +148,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 this.currentDocument.find('.bilibili-player-danmaku-setting-lite-panel').hide();
             } else if (keyCode === this.getKeyCode('play/pause')){
                 this.currentDocument.find('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-start').click();
+            } else{
+                this.partHandler(keyCode);
             }
         },
         autoHandler: function(){
@@ -174,8 +177,38 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 }
                 if(count >= that.config.autoLoopCount){
                     console.log('playerQuickDo auto failed');
+                    clearInterval(timer);
                 }
             }, this.config.autoLoopTime);
+        },
+        partHandler: function(keyCode){
+            var that = this;
+            var href;
+            if(this.isBangumi){
+                var curPart = $('.v1-bangumi-list-part-child.cur:eq(0)');
+                var curId = curPart.attr('data-episode-id');
+                console.log(curId);
+                if(keyCode === this.getKeyCode('nextPart')){
+                    var nextId = curPart.next().attr('data-episode-id');
+                    href = nextId ? location.href.replace(curId,nextId) : href;
+                } else if (keyCode === this.getKeyCode('prevPart')){
+                    var prevId = curPart.prev().attr('data-episode-id');
+                    href = prevId ? location.href.replace(curId,prevId) : href;
+                }
+            }else if($('div.v-plist span.curPage')[0]){
+                if(keyCode === this.getKeyCode('nextPart')){
+                    href = $('div.v-plist span.curPage').next().attr('href');
+                } else if (keyCode === this.getKeyCode('prevPart')){
+                    href = $('div.v-plist span.curPage').prev().attr('href');
+                }
+            }
+            console.log(href);
+            if(href){
+                location.href = href;
+                if(this.isBangumi){
+                    location.reload();
+                }
+            }
         },
         addStyle: function(cssArr){
             var css = '<style type="text/css">';
