@@ -1,16 +1,18 @@
 // ==UserScript==
 // @name         bilibili - H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.7
+// @version      0.8
 // @description  双击全屏,'+','-'调节播放速度、f键全屏、w键网页全屏、p键暂停/播放、d键开启/关闭弹幕等
 // @author       jeayu
 // @match        *://www.bilibili.com/video/*
 // @match        *://bangumi.bilibili.com/*
+// @grant GM_setValue
+// @grant GM_getValue
 // ==/UserScript==
 
 /*
-v0.7 更新：
-回车键快速进入弹幕编辑状态，全面模式下也可以
+v0.8 更新：
+播放器右侧设置-高级选项 可以设置自动播放、全屏和关闭弹幕
 
 历史更新：
 https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
@@ -75,7 +77,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 'addSpeed': '=+',
                 'subSpeed': '-_',
                 'danmu': 'd',
-                'play/pause': 'p',
+                'playAndPause': 'p',
                 'nextPart': 'l',
                 'prevPart': 'k',
                 'pushDanmu': 'enter'
@@ -83,7 +85,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             auto: {
                 'switch': 1, //总开关 1开启 0关闭
                 'play': 1, //1开启 0关闭
-                'fullscreen': 1, //1全屏 2网页全屏 关闭
+                'fullscreen': 1, //1全屏 0关闭
                 'danmu': 1 //1开启 0关闭
             },
             initLoopTime: 100,
@@ -153,7 +155,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 }
                 $('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-danmaku', this.currentDocument).click();
                 $('.bilibili-player-danmaku-setting-lite-panel', this.currentDocument).hide();
-            } else if (keyCode === this.getKeyCode('play/pause')){
+            } else if (keyCode === this.getKeyCode('playAndPause')){
                 $('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-start', this.currentDocument).click();
             } else if (keyCode === this.getKeyCode('pushDanmu')){
                 this.pushDanmuHandler(keyCode);
@@ -171,15 +173,13 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 var readyState = $('.bilibili-player-video-panel div[stage="3"]', that.currentDocument);
                 count++;
                 if (readyState && readyState.html() === '加载视频内容...[完成]'){
-                    if(config.play === 1){
-                        that.keyHandler(that.getKeyCode('play/pause'));
+                    if(GM_getValue('playAndPause') === 1){
+                        that.keyHandler(that.getKeyCode('playAndPause'));
                     }
-                    if (config.fullscreen === 1){
+                    if (GM_getValue('fullscreen') === 1){
                         that.keyHandler(that.getKeyCode('fullscreen'));
-                    } else if (config.fullscreen === 2){
-                        that.keyHandler(that.getKeyCode('webFullscreen'));
                     }
-                    if (config.danmu === 0){
+                    if (GM_getValue('danmu') === 0){
                         that.keyHandler(that.getKeyCode('danmu'));
                     }
                     clearInterval(timer);
@@ -245,6 +245,52 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 console.log(e);
             }
         },
+        initSettingHTML: function(){
+            var config = {
+                playAndPause: {checkboxId: 'checkboxAP', text: '自动播放'},
+                fullscreen: {checkboxId: 'checkboxAF',text: '自动全屏'},
+                danmu: {checkboxId: 'checkboxAD',text: '自动打开弹幕'}
+            };
+            var that = this;
+            for (let key in config){
+                var value = config[key];
+                $('.bilibili-player-advopt-wrap', this.currentDocument).append(this.getSettingHTML(value.checkboxId, value.text));
+                if(GM_getValue(key) === 1){
+                    $(`#${value.checkboxId}-lable`, this.currentDocument).addClass('bpui-state-active');
+                }else if(GM_getValue(key) === 0){
+                    $(`#${value.checkboxId}-lable`, this.currentDocument).removeClass('bpui-state-active');
+                }else{
+                    GM_setValue(key, this.config.auto[key]);
+                    $(`#${value.checkboxId}-lable`, this.currentDocument).removeClass('bpui-state-active');
+                }
+                $(`#${value.checkboxId}`, this.currentDocument).click(function(){
+                    var gmvalue = GM_getValue(key) === 1 ? 0 : 1;
+                    GM_setValue(key, gmvalue);
+                    if(gmvalue === 1){
+                        $(this, that.currentDocument).next().addClass('bpui-state-active');
+                    }else{
+                        $(this, that.currentDocument).next().removeClass('bpui-state-active');
+                    }
+                });
+            }
+            this.autoHandler();
+        },
+        getSettingHTML: function(checkboxId,text){
+            var html = `
+            <div class="bilibili-player-fl bilibili-player-tooltip-trigger" data-tooltip="1" data-position="bottom-center" data-change-mode="1">
+                <input type="checkbox" class="bilibili-player-setting-fullscreensend bpui-component bpui-checkbox bpui-button" id="${checkboxId}">
+                <label for="${checkboxId}" id="${checkboxId}-lable" class="button bpui-button-text-only" role="button" data-pressed="false">
+                    <span class="bpui-button-text">
+                        <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12checkbox"></i>
+                        <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12selected2"></i>
+                        <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12select"></i>
+                        <span class="bpui-checkbox-text">${text}
+                        </span>
+                    </span>
+                </label>
+            </div>`;
+            return html;
+        },
         showInfoAnimate: function(info) {
             var that = this;
             clearTimeout(this.infoAnimateTimer);
@@ -286,7 +332,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         that.initInfoStyle();
                         that.bindEvnet();
                         that.bindKeydown();
-                        that.autoHandler();
+                        that.initSettingHTML();
                     } catch (e) {
                         console.log('playerQuickDo init error');
                     } finally {
