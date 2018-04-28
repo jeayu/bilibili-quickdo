@@ -1,34 +1,36 @@
 // ==UserScript==
-// @name         bilibili - H5播放器快捷操作
+// @name         bilibili-H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.8
+// @version      0.8.1
 // @description  双击全屏,'+','-'调节播放速度、f键全屏、w键网页全屏、p键暂停/播放、d键开启/关闭弹幕等
 // @author       jeayu
-// @match        *://www.bilibili.com/video/*
-// @match        *://bangumi.bilibili.com/*
-// @grant GM_setValue
-// @grant GM_getValue
+// @match        *://www.bilibili.com/bangumi/play/ep*
+// @match        *://www.bilibili.com/bangumi/play/ss*
+// @match        *://www.bilibili.com/video/av*
+// @match        *://www.bilibili.com/watchlater/*
+// @grant        GM_setValue
+// @grant        GM_getValue
 // ==/UserScript==
 
 /*
-v0.8 更新：
-播放器右侧设置-高级选项 可以设置自动播放、全屏和关闭弹幕
+v0.8.1 更新：
+修复失效的功能
 
 历史更新：
 https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
  */
 
-(function() {
+(function () {
     'use strict';
 
-    var playerQuickDo = {
-        player: null,
+    var bilibiliQuickDo = {
+        h5Player: null,
         infoAnimateTimer: null,
-        currentDocument: null,
         isBangumi: false,
         isShowInput: false,
-        keyCode:{
+        keyCode: {
             'enter': 13,
+            'esc': 27,
             '=+': 187,
             '-_': 189,
             '+': 107,
@@ -80,7 +82,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 'playAndPause': 'p',
                 'nextPart': 'l',
                 'prevPart': 'k',
-                'pushDanmu': 'enter'
+                'pushDanmu': 'enter',
+                'esc': 'esc',
             },
             auto: {
                 'switch': 1, //总开关 1开启 0关闭
@@ -88,18 +91,15 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 'fullscreen': 1, //1全屏 0关闭
                 'danmu': 1 //1开启 0关闭
             },
-            initLoopTime: 100,
-            initLoopCount: 500,
-            autoLoopTime: 300,
-            autoLoopCount: 50,
         },
-        dblclickFullscreen: function() {
+        dblclickFullscreen: function () {
             var that = this;
-            this.player.dblclick(function() {
-                $('.bilibili-player-iconfont.bilibili-player-iconfont-fullscreen', that.currentDocument).click();
+            this.h5Player.dblclick(function () {
+                $('.bilibili-player-iconfont.bilibili-player-iconfont-fullscreen').click();
+                window.dispatchEvent(new Event('resize'));
             });
         },
-        initInfoStyle: function() {
+        initInfoStyle: function () {
             var that = this;
             var cssArr = [
                 '.bilibili-player.mode-fullscreen .bilibili-player-area .bilibili-player-video-wrap .bilibili-player-infoHint{width: 120px; height: 42px; line-height: 42px; padding: 15px 18px 15px 12px; font-size: 28px; margin-left: -75px; margin-top: -36px;}',
@@ -108,247 +108,222 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             ];
             var html = '<div class="bilibili-player-infoHint" style="opacity: 0; display: none;"><span class="bilibili-player-infoHint-text">1</span></div>';
             this.addStyle(cssArr);
-            $('div.bilibili-player-video-wrap', this.currentDocument).append(html);
+            $('div.bilibili-player-video-wrap').append(html);
         },
-        getKeyCode: function(type){
+        getKeyCode: function (type) {
             return this.keyCode[this.config.quickDo[type]];
         },
-        bindEvnet: function(){
-            $('input.bilibili-player-video-danmaku-input', this.currentDocument).click(function () {
-               $(this).select();
+        bindEvnet: function () {
+            $('input.bilibili-player-video-danmaku-input').click(function () {
+                $(this).select();
             });
         },
-        bindKeydown: function(){
+        bindKeydown: function () {
             var that = this;
-            this.currentDocument.keydown(function(e) {
-                if ($("input:focus, textarea:focus", that.currentDocument).length > 0)
-                    that.pushDanmuHandler(e.keyCode);
-                else
-                    that.keyHandler(e.keyCode);
-            });
-            if (this.isBangumi){
-                $(document).keydown(function(e){
-                    if ($(document).find("input:focus, textarea:focus").length > 0)
+            if (this.isBangumi) {
+                $(document).keydown(function (e) {
+                    if ($(document).find("input:focus, textarea:focus").length > 0) {
                         that.pushDanmuHandler(e.keyCode);
-                    else
+                    } else {
                         that.keyHandler(e.keyCode);
+                    }
+                });
+            } else {
+                $(document).keydown(function (e) {
+                    if ($("input:focus, textarea:focus").length > 0) {
+                        that.pushDanmuHandler(e.keyCode);
+                    } else {
+                        that.keyHandler(e.keyCode);
+                    }
                 });
             }
         },
-        keyHandler: function(keyCode){
-            var player = this.player[0];
-            if (keyCode === this.getKeyCode('addSpeed') && player.playbackRate < 4) {
-                player.playbackRate += 0.25;
-                this.showInfoAnimate(player.playbackRate + ' X');
-            } else if (keyCode === this.getKeyCode('subSpeed') && player.playbackRate > 0.5) {
-                player.playbackRate -= 0.25;
-                this.showInfoAnimate(player.playbackRate + ' X');
-            } else if (keyCode === this.getKeyCode('fullscreen')){
-                $('.bilibili-player-iconfont.bilibili-player-iconfont-fullscreen', this.currentDocument).click();
-            } else if (keyCode === this.getKeyCode('webFullscreen')){
-                $('.bilibili-player-iconfont.bilibili-player-iconfont-web-fullscreen', this.currentDocument).click();
-            } else if (keyCode === this.getKeyCode('danmu')){
-                if ($('.video-state-danmaku-off', this.currentDocument)[0]){
+        keyHandler: function (keyCode) {
+            var h5Player = this.h5Player[0];
+            if (keyCode === this.getKeyCode('addSpeed') && h5Player.playbackRate < 4) {
+                h5Player.playbackRate += 0.25;
+                this.showInfoAnimate(h5Player.playbackRate + ' X');
+            } else if (keyCode === this.getKeyCode('subSpeed') && h5Player.playbackRate > 0.5) {
+                h5Player.playbackRate -= 0.25;
+                this.showInfoAnimate(h5Player.playbackRate + ' X');
+            } else if (keyCode === this.getKeyCode('fullscreen')) {
+                $('.bilibili-player-iconfont.bilibili-player-iconfont-fullscreen').click();
+                window.dispatchEvent(new Event('resize'));
+            } else if (keyCode === this.getKeyCode('webFullscreen')) {
+                $('.bilibili-player-iconfont.bilibili-player-iconfont-web-fullscreen').click();
+            } else if (keyCode === this.getKeyCode('danmu')) {
+                if ($('.video-state-danmaku-off')[0]) {
                     this.showInfoAnimate('弹幕开启');
                 } else {
                     this.showInfoAnimate('弹幕关闭');
                 }
-                $('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-danmaku', this.currentDocument).click();
-                $('.bilibili-player-danmaku-setting-lite-panel', this.currentDocument).hide();
-            } else if (keyCode === this.getKeyCode('playAndPause')){
-                $('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-start', this.currentDocument).click();
-            } else if (keyCode === this.getKeyCode('pushDanmu')){
+                $('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-danmaku').click();
+                $('.bilibili-player-danmaku-setting-lite-panel').hide();
+            } else if (keyCode === this.getKeyCode('playAndPause')) {
+                $('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-start').click();
+            } else if (keyCode === this.getKeyCode('pushDanmu')) {
                 this.pushDanmuHandler(keyCode);
-            } else{
+            } else if (keyCode === this.getKeyCode('esc')) {
+                window.dispatchEvent(new Event('resize'));
+            } else {
                 this.partHandler(keyCode);
             }
         },
-        autoHandler: function(){
+        autoHandler: function () {
             var config = this.config.auto;
-            if(config.switch === 0)
+            if (config.switch === 0) {
                 return;
-            var that = this;
-            var count = 0;
-            var timer = window.setInterval(function(){
-                var readyState = $('.bilibili-player-video-panel div[stage="3"]', that.currentDocument);
-                count++;
-                if (readyState && readyState.html() === '加载视频内容...[完成]'){
-                    if(GM_getValue('playAndPause') === 1){
-                        that.keyHandler(that.getKeyCode('playAndPause'));
-                    }
-                    if (GM_getValue('fullscreen') === 1){
-                        that.keyHandler(that.getKeyCode('fullscreen'));
-                    }
-                    if (GM_getValue('danmu') === 0){
-                        that.keyHandler(that.getKeyCode('danmu'));
-                    }
-                    clearInterval(timer);
-                }
-                if(count >= that.config.autoLoopCount){
-                    console.log('playerQuickDo auto failed');
-                    clearInterval(timer);
-                }
-            }, this.config.autoLoopTime);
+            }
+            var h5Player = this.h5Player[0];
+            if (GM_getValue('fullscreen') === 1 && !player.isFullScreen()) {
+                this.keyHandler(this.getKeyCode('fullscreen'));
+            }
+            if (GM_getValue('playAndPause') === 1 && h5Player.paused) {
+                h5Player.play();
+            }
+            if (GM_getValue('danmu') === 0) {
+                this.keyHandler(this.getKeyCode('danmu'));
+            }
         },
-        partHandler: function(keyCode){
+        partHandler: function (keyCode) {
             var that = this;
+            var newPart;
             var href;
-            if(this.isBangumi){
-                var curPart = $('.v1-bangumi-list-part-child.cur:eq(0)');
-                var curId = curPart.attr('data-episode-id');
-                if(keyCode === this.getKeyCode('nextPart')){
-                    var nextId = curPart.next().attr('data-episode-id');
-                    href = nextId ? location.href.replace(curId,nextId) : href;
-                } else if (keyCode === this.getKeyCode('prevPart')){
-                    var prevId = curPart.prev().attr('data-episode-id');
-                    href = prevId ? location.href.replace(curId,prevId) : href;
+            if ($('.episode-item.on')[0]) {
+                if (keyCode === this.getKeyCode('nextPart')) {
+                    newPart = $('.episode-item.on').next();
+                } else if (keyCode === this.getKeyCode('prevPart')) {
+                    newPart = $('.episode-item.on').prev();
                 }
-            }else if($('div.v-plist span.curPage')[0]){
-                if(keyCode === this.getKeyCode('nextPart')){
-                    href = $('div.v-plist span.curPage').next().attr('href');
-                } else if (keyCode === this.getKeyCode('prevPart')){
-                    href = $('div.v-plist span.curPage').prev().attr('href');
+                if (newPart && newPart[0]) {
+                    newPart.click();
                 }
-            }
-            if(href){
-                location.href = href;
-                if(this.isBangumi){
-                    location.reload();
+            } else if ($('.item.on')[0]) {
+                if (keyCode === this.getKeyCode('nextPart')) {
+                    href = $('.item.on').next().attr('href');
+                } else if (keyCode === this.getKeyCode('prevPart')) {
+                    href = $('.item.on').prev().attr('href');
+                }
+                if (href) {
+                    location.href = href;
                 }
             }
         },
-        pushDanmuHandler: function(keyCode){
-            if (keyCode !== this.getKeyCode('pushDanmu')){
+        pushDanmuHandler: function (keyCode) {
+            if (keyCode !== this.getKeyCode('pushDanmu')) {
                 return;
             }
-            var isFullScreen = $('div.bilibili-player.relative.mode-fullscreen', this.currentDocument)[0];
-            if(isFullScreen && $("input.bilibili-player-video-danmaku-input:focus", this.currentDocument).length <= 0 && !this.isShowInput){
+            var isFullScreen = $('div.bilibili-player.relative.mode-fullscreen')[0];
+            if (isFullScreen && $("input.bilibili-player-video-danmaku-input:focus").length <= 0 && !this.isShowInput) {
                 this.isShowInput = true;
-                $('div.bilibili-player-video-sendbar.relative', this.currentDocument).css("opacity", 1).show();
-                $('input.bilibili-player-video-danmaku-input', this.currentDocument).click();
-            }else if(isFullScreen){
+                $('div.bilibili-player-video-sendbar.relative').css("opacity", 1).show();
+                $('input.bilibili-player-video-danmaku-input').click();
+            } else if (isFullScreen) {
                 this.isShowInput = false;
-                $('div.bilibili-player-video-sendbar.relative', this.currentDocument).css("opacity", 0).hide();
-            } else{
-                $('input.bilibili-player-video-danmaku-input', this.currentDocument).click();
+                $('div.bilibili-player-video-sendbar.relative').css("opacity", 0).hide();
+            } else {
+                $('input.bilibili-player-video-danmaku-input').click();
             }
         },
-        addStyle: function(cssArr){
+        addStyle: function (cssArr) {
             var css = '<style type="text/css">';
-            for (let i in cssArr){
+            for (let i in cssArr) {
                 css += cssArr[i];
             }
             css += '</style>';
-            try{
-                $('head', this.currentDocument).append(css);
+            try {
+                $('head').append(css);
             } catch (e) {
                 console.log(e);
             }
         },
-        initSettingHTML: function(){
+        initSettingHTML: function () {
             var config = {
-                playAndPause: {checkboxId: 'checkboxAP', text: '自动播放'},
-                fullscreen: {checkboxId: 'checkboxAF',text: '自动全屏'},
-                danmu: {checkboxId: 'checkboxAD',text: '自动打开弹幕'}
+                playAndPause: { checkboxId: 'checkboxAP', text: '自动播放' },
+                fullscreen: { checkboxId: 'checkboxAF', text: '自动全屏' },
+                danmu: { checkboxId: 'checkboxAD', text: '自动打开弹幕' }
             };
             var that = this;
-            for (let key in config){
+            for (let key in config) {
                 var value = config[key];
-                $('.bilibili-player-advopt-wrap', this.currentDocument).append(this.getSettingHTML(value.checkboxId, value.text));
-                if(GM_getValue(key) === 1){
-                    $(`#${value.checkboxId}-lable`, this.currentDocument).addClass('bpui-state-active');
-                }else if(GM_getValue(key) === 0){
-                    $(`#${value.checkboxId}-lable`, this.currentDocument).removeClass('bpui-state-active');
-                }else{
+                $('.bilibili-player-advopt-wrap').append(this.getSettingHTML(value.checkboxId, value.text));
+                if (GM_getValue(key) === 1) {
+                    $(`#${value.checkboxId}-lable`).addClass('bpui-state-active');
+                } else if (GM_getValue(key) === 0) {
+                    $(`#${value.checkboxId}-lable`).removeClass('bpui-state-active');
+                } else {
                     GM_setValue(key, this.config.auto[key]);
-                    $(`#${value.checkboxId}-lable`, this.currentDocument).removeClass('bpui-state-active');
+                    $(`#${value.checkboxId}-lable`).removeClass('bpui-state-active');
                 }
-                $(`#${value.checkboxId}`, this.currentDocument).click(function(){
+                $(`#${value.checkboxId}`).click(function () {
                     var gmvalue = GM_getValue(key) === 1 ? 0 : 1;
                     GM_setValue(key, gmvalue);
-                    if(gmvalue === 1){
-                        $(this, that.currentDocument).next().addClass('bpui-state-active');
-                    }else{
-                        $(this, that.currentDocument).next().removeClass('bpui-state-active');
+                    if (gmvalue === 1) {
+                        $(this).next().addClass('bpui-state-active');
+                    } else {
+                        $(this).next().removeClass('bpui-state-active');
                     }
                 });
             }
-            this.autoHandler();
         },
-        getSettingHTML: function(checkboxId,text){
+        getSettingHTML: function (checkboxId, text) {
             var html = `
             <div class="bilibili-player-fl bilibili-player-tooltip-trigger" data-tooltip="1" data-position="bottom-center" data-change-mode="1">
                 <input type="checkbox" class="bilibili-player-setting-fullscreensend bpui-component bpui-checkbox bpui-button" id="${checkboxId}">
                 <label for="${checkboxId}" id="${checkboxId}-lable" class="button bpui-button-text-only" role="button" data-pressed="false">
                     <span class="bpui-button-text">
-                        <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12checkbox"></i>
-                        <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12selected2"></i>
-                        <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12select"></i>
-                        <span class="bpui-checkbox-text">${text}
-                        </span>
+                    <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12checkbox"></i>
+                    <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12selected2"></i>
+                    <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12select"></i>
+                    <span class="bpui-checkbox-text">${text}</span>
                     </span>
                 </label>
             </div>`;
             return html;
         },
-        showInfoAnimate: function(info) {
+        showInfoAnimate: function (info) {
             var that = this;
             clearTimeout(this.infoAnimateTimer);
-            $('div.bilibili-player-infoHint', this.currentDocument).stop().css("opacity", 1).show();
-            $('span.bilibili-player-infoHint-text', this.currentDocument)[0].innerHTML = info;
-            this.infoAnimateTimer = setTimeout(function() {
-                $('div.bilibili-player-infoHint', that.currentDocument).animate({
+            $('div.bilibili-player-infoHint').stop().css("opacity", 1).show();
+            $('span.bilibili-player-infoHint-text')[0].innerHTML = info;
+            this.infoAnimateTimer = setTimeout(function () {
+                $('div.bilibili-player-infoHint').animate({
                     opacity: 0
-                }, 300, function() {
+                }, 300, function () {
                     $(this).hide();
                 });
             }, 1E3);
         },
-        getH5Player: function() {
-            if(this.player && this.player[0])
-                return this.player;
-            var bangumi = /bangumi.bilibili.com/g;
-            var iframePlayer = $('iframe.bilibiliHtml5Player');
-            if (bangumi.exec(location.href) && iframePlayer[0]) {
-                try{
-                    this.currentDocument = iframePlayer.contents();
-                    this.isBangumi = true;
-                } catch (e) {
-                }
-            } else{
-                this.currentDocument = $(document);
-            }
-            this.player = $("body", this.currentDocument).find('.bilibili-player-video video');
-            return this.player;
-        },
-        init: function() {
+        init: function () {
             var timerCount = 0;
             var that = this;
-            var timer = window.setInterval(function() {
-                var player = that.getH5Player();
-                if (player[0]) {
-                    try {
-                        that.dblclickFullscreen();
-                        that.initInfoStyle();
-                        that.bindEvnet();
-                        that.bindKeydown();
-                        that.initSettingHTML();
-                    } catch (e) {
-                        console.log('playerQuickDo init error');
-                    } finally {
-                        console.log('playerQuickDo init done');
-                        clearInterval(timer);
+            var bangumi = /bangumi/g;
+            this.isBangumi = bangumi.exec(location.href);
+            var observer = new MutationObserver(function (mutations, observer) {
+                mutations.forEach(function (mutation) {
+                    if (mutation.previousSibling && $(mutation.target).attr('stage') === '1') {
+                        try {
+                            that.h5Player = $("#bofqi").find('.bilibili-player-video video');
+                            that.dblclickFullscreen();
+                            that.initInfoStyle();
+                            that.bindEvnet();
+                            that.bindKeydown();
+                            that.initSettingHTML();
+                            that.autoHandler();
+                        } catch (e) {
+                            console.log('bilibili-quickdo init error');
+                            throw e;
+                        } finally {
+                            console.log('bilibili-quickdo init done');
+                        }
                     }
-                } else {
-                    timerCount++;
-                    if (timerCount >= that.config.initLoopCount) {
-                        console.log('H5 player not found');
-                        clearInterval(timer);
-                    }
-                }
-            }, this.config.initLoopTime);
-
+                });
+            });
+            observer.observe($('body')[0], {
+                childList: true,
+                subtree: true,
+            });
         }
     };
-    playerQuickDo.init();
+    bilibiliQuickDo.init();
 })();
