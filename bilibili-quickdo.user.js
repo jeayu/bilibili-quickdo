@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili-H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.1
+// @version      0.9.2
 // @description  双击全屏,'+','-'调节播放速度、f键全屏、w键网页全屏、p键暂停/播放、d键开启/关闭弹幕等
 // @author       jeayu
 // @license      MIT
@@ -14,8 +14,8 @@
 // ==/UserScript==
 
 /*
-v0.9.1 更新：
-兼容新版播放页, 新增I，O键左右旋转视频
+v0.9.2 更新：
+修复新版播放页不能分页换p, 全屏不能快速发弹幕
 
 历史更新：
 https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
@@ -27,7 +27,6 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
     var bilibiliQuickDo = {
         h5Player: null,
         infoAnimateTimer: null,
-        isShowInput: false,
         keyCode: {
             'enter': 13,
             'esc': 27,
@@ -187,7 +186,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             } else if (keyCode === this.getKeyCode('pushDanmu')) {
                 this.pushDanmuHandler(keyCode);
             } else if (keyCode === this.getKeyCode('mirror')) {
-                if (this.h5Player.css("-webkit-transform") != "none") {
+                if (this.getTransformCss(this.h5Player) != "none") {
                     this.setH5PlayerRransform("");
                 } else {
                     this.setH5PlayerRransform("rotateY(180deg)");
@@ -224,41 +223,40 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         partHandler: function (keyCode) {
             var newPart;
-            var cur = $('.episode-item.on');
-            if (cur[0]) {
+            var cur = $('.episode-item.on')[0] || $('.item.on')[0] || $('#multi_page .cur-list ul li.on')[0];
+            if (cur) {
+                cur = $(cur);
                 if (keyCode === this.getKeyCode('nextPart')) {
                     newPart = cur.next();
+                    if (!newPart[0]) {
+                        this.triggerSleep($('#multi_page .paging li.on').next()).then(() => $('#multi_page .cur-list ul li:first a')[0].click()).catch(() => {});
+                        return;
+                    }
                 } else if (keyCode === this.getKeyCode('prevPart')) {
                     newPart = cur.prev();
-                }
-                if (newPart && newPart[0]) {
-                    newPart.click();
-                    return;
+                    if (!newPart[0]) {
+                        this.triggerSleep($('#multi_page .paging li.on').prev()).then(() => $('#multi_page .cur-list ul li:last a')[0].click()).catch(() => {});
+                        return;
+                    }
                 }
             }
-            cur = $('.item.on');
-            if (cur[0]) {
-                if (keyCode === this.getKeyCode('nextPart')) {
-                    newPart = cur.next();
-                } else if (keyCode === this.getKeyCode('prevPart')) {
-                    newPart = cur.prev();
-                }
-                if (newPart && newPart[0]) {
+            if (newPart && newPart[0]) {
+                if (newPart.find('a')[0]) {
+                    newPart.find('a')[0].click();
+                } else {
                     newPart[0].click();
                 }
-
             }
-            cur = $('#multi_page .cur-list ul li.on');
-            if (cur[0]) {
-                if (keyCode === this.getKeyCode('nextPart')) {
-                    newPart = cur.next();
-                } else if (keyCode === this.getKeyCode('prevPart')) {
-                    newPart = cur.prev();
+        },
+        triggerSleep: function (el, event="click", ms=100) {
+            return new Promise((resolve, reject) => {
+                if (el && el[0]) {
+                    el.trigger(event);
+                    setTimeout(resolve, ms);
+                } else {
+                    reject();
                 }
-                if (newPart && newPart.find('a')[0]) {
-                    newPart.find('a')[0].click();
-                }
-            }
+            });
         },
         pushDanmuHandler: function (keyCode) {
             var danmuInput = $('input.bilibili-player-video-danmaku-input');
@@ -266,17 +264,20 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 || danmuInput.css('display') === 'none') {
                 return;
             }
-            if (player.isFullScreen() && $("input.bilibili-player-video-danmaku-input:focus").length <= 0 && !this.isShowInput) {
-                this.isShowInput = true;
-                $('div.bilibili-player-video-sendbar.relative').css("opacity", 1).show();
-                danmuInput.select();
-            } else if (player.isFullScreen()) {
-                this.isShowInput = false;
-                $('div.bilibili-player-video-sendbar.relative').css("opacity", 0).hide();
-            } else if ($("input.bilibili-player-video-danmaku-input:focus").length <= 0) {
-                danmuInput.select();
+            if ($("input.bilibili-player-video-danmaku-input:focus").length <= 0) {
+                this.triggerSleep(danmuInput, "mouseover").then(() => {
+                    if (player.isFullScreen() && !$('.bilibili-player-video-control-wrap')[0]) {
+                        $('div.bilibili-player-video-sendbar').css("opacity", 1).show();
+                    }
+                    danmuInput.select();
+                }).catch(() => {});
             } else {
-                danmuInput.blur();
+                this.triggerSleep(danmuInput, "mouseout").then(() => {
+                    danmuInput.blur();
+                    if (player.isFullScreen() && !$('.bilibili-player-video-control-wrap')[0]) {
+                        $('div.bilibili-player-video-sendbar').css("opacity", 0).hide();
+                    }
+                }).catch(() => {});
             }
         },
         h5PlayerRotate: function (flag) {
@@ -297,8 +298,11 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             this.h5Player.css("-o-transform", transform);
             this.h5Player.css("transform", transform);
         },
+        getTransformCss: function (e) {
+            return e.css("-webkit-transform") || e.css("-moz-transform") || e.css("-ms-transform") || e.css("-o-transform") || 'none';
+        },
         rotationDeg: function (e) {
-            var transformCss = e.css("-webkit-transform") || e.css("-moz-transform") || e.css("-ms-transform") || e.css("-o-transform") || '';
+            var transformCss = this.getTransformCss(e);
             var matrix = transformCss.match('matrix\\((.*)\\)');
             if (matrix) {
                 matrix = matrix[1].split(',');
