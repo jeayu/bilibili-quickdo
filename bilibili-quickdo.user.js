@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         bilibili-H5播放器快捷操作
+// @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.3
-// @description  双击全屏,'+','-'调节播放速度、f键全屏、w键网页全屏、p键暂停/播放、d键开启/关闭弹幕等
+// @version      0.9.4
+// @description  自动化设置,回车快速发弹幕、双击全屏,'+','-'调节播放速度、f键全屏、w键网页全屏、p键暂停/播放、d键开/关弹幕、y键关/开灯、I键、O键左右旋转等
 // @author       jeayu
 // @license      MIT
 // @match        *://www.bilibili.com/bangumi/play/ep*
@@ -14,8 +14,8 @@
 // ==/UserScript==
 
 /*
-v0.9.3 更新：
-新增新版播放页设置页面、Y键关灯；修复旧版播放页设置不显示、旧版全屏快速发弹幕显示问题、切换分辨率后部分功能无效问题
+v0.9.4 更新：
+新增自动网页全屏、自动宽屏、统一弹幕颜色、播放完自动关灯设置
 
 历史更新：
 https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
@@ -96,9 +96,13 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 'switch': 1, //总开关 1开启 0关闭
                 'play': 1, //1开启 0关闭
                 'fullscreen': 1, //1全屏 0关闭
+                'webFullscreen': 0,//1开启 0关闭
+                'widescreen': 0,//1开启 0关闭
                 'danmu': 1, //1开启 0关闭
                 'jump': 1, //1全屏 0关闭
                 'lightOff': 0, //1开启 0关闭
+                'danmuColor': 0,
+                'lightOn': 0,
             },
         },
         dblclickFullscreen: function () {
@@ -130,7 +134,9 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 if ($("input:focus, textarea:focus").length > 0) {
                     this.pushDanmuHandler(e.keyCode);
                 } else {
-                    this.keyHandler(e.keyCode);
+                    if (!e.ctrlKey && !e.shiftKey) {
+                        this.keyHandler(e.keyCode);
+                    }
                 }
             });
         },
@@ -153,8 +159,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             } else if (keyCode === this.getKeyCode('fullscreen')) {
                 $('.bilibili-player-video-btn-fullscreen').click();
                 if ($('.bilibili-player-video-btn-setting-panel-others-content-lightoff input')[0]) {
-                    $('body').hasClass('player-mode-blackmask') 
-                    ? $('#heimu').css('display', 'block') 
+                    $('body').hasClass('player-mode-blackmask')
+                    ? $('#heimu').css('display', 'block')
                     : $('#heimu').css('display', '');
                 }
             } else if (keyCode === this.getKeyCode('webFullscreen')) {
@@ -232,13 +238,18 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 return;
             }
             var h5Player = this.h5Player[0];
-            if (GM_getValue('lightOff') === 1) {
+            var bilibiliPlayer = $('#bilibiliPlayer');
+            if (GM_getValue('lightOff') === 1 && $('#heimu').css('display') !== 'block') {
                 this.keyHandler(this.getKeyCode('lightOff'));
             }
             if (GM_getValue('fullscreen') === 1 && !player.isFullScreen()) {
                 // TODO 新版直接fullscreen有点问题
                 this.keyHandler(this.getKeyCode('webFullscreen'));
                 this.keyHandler(this.getKeyCode('fullscreen'));
+            } else if (GM_getValue('webFullscreen') === 1 && !bilibiliPlayer.hasClass('mode-webfullscreen')) {
+                this.keyHandler(this.getKeyCode('webFullscreen'));
+            } else if (GM_getValue('widescreen') === 1 && !bilibiliPlayer.hasClass('mode-widescreen')) {
+                this.keyHandler(this.getKeyCode('widescreen'));
             }
             if (GM_getValue('playAndPause') === 1 && h5Player.paused) {
                 h5Player.play();
@@ -355,10 +366,14 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         initSettingHTML: function () {
             var config = {
                 playAndPause: { checkboxId: 'checkboxAP', text: '自动播放' },
-                fullscreen: { checkboxId: 'checkboxAF', text: '自动全屏' },
+                fullscreen: { checkboxId: 'checkboxAF', text: '自动全屏' , contention:['webFullscreen', 'widescreen'] },
+                webFullscreen: { checkboxId: 'checkboxAWF', text: '自动网页全屏' , contention:['fullscreen', 'widescreen'] },
+                widescreen: { checkboxId: 'checkboxAW', text: '自动宽屏' , contention:['webFullscreen', 'fullscreen'] },
                 danmu: { checkboxId: 'checkboxAD', text: '自动打开弹幕' },
                 jump: { checkboxId: 'checkboxAJ', text: '自动转跳' },
-                lightOff: { checkboxId: 'checkboxALO', text: '自动关灯' },
+                lightOff: { checkboxId: 'checkboxALOFF', text: '自动关灯' },
+                danmuColor: { checkboxId: 'checkboxDMC', text: '统一弹幕颜色' },
+                lightOn: { checkboxId: 'checkboxALON', text: '播放结束自动开灯' },
             };
             if($('.bilibili-player-video-btn-setting').mouseover()[0]) {
                 for (let key in config) {
@@ -372,6 +387,16 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                     $(`#${value.checkboxId}`).click(function () {
                         let gmvalue = GM_getValue(key) === 1 ? 0 : 1;
                         GM_setValue(key, gmvalue);
+                        if (gmvalue === 1) {
+                            if (config[key].contention) {
+                                config[key].contention.forEach((k,i) => {
+                                    if (GM_getValue(k) === 1) {
+                                        let checkboxId = config[k].checkboxId;
+                                        $(`#${checkboxId}`).click();
+                                    }
+                                });
+                            }
+                        }
                     });
                 }
                 $('.bilibili-player-video-btn-setting').mouseout();
@@ -394,6 +419,14 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         GM_setValue(key, gmvalue);
                         if (gmvalue === 1) {
                             $(this).next().addClass('bpui-state-active');
+                            if (config[key].contention) {
+                                config[key].contention.forEach((k,i) => {
+                                    if (GM_getValue(k) === 1) {
+                                        let checkboxId = config[k].checkboxId;
+                                        $(`#${checkboxId}`).click();
+                                    }
+                                });
+                            }
                         } else {
                             $(this).next().removeClass('bpui-state-active');
                         }
@@ -452,9 +485,20 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 });
             }, 1E3);
         },
+        danmuDIY: function(danmu) {
+            // 挖了一个坑
+            if (danmu && danmu[0]) {
+                if (GM_getValue('danmuColor') === 1 ) {
+                    let danmuColor = $('.bilibili-player-color-picker-inline-color-current').css('background-color')
+                    || $('.bilibili-player-color-picker-current-color').css('background-color') || 'rgb(255, 255, 255)';
+                    danmu.css('color',danmuColor);
+                }
+            }
+        },
         init: function () {
             new MutationObserver((mutations, observer) => {
                 mutations.forEach((mutation) => {
+                    let danmu;
                     let target = $(mutation.target);
                     if (mutation.previousSibling && target.attr('stage') === '1') {
                         try {
@@ -465,12 +509,23 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                             this.initSettingHTML();
                             this.autoHandler();
                             console.log('bilibili-quickdo init done');
+
                         } catch (e) {
                             console.error('bilibili-quickdo init error:', e);
                         }
                     } else if (target.hasClass('bilibili-player-video')) {
                         this.h5Player = $('#bofqi .bilibili-player-video video');
+                    } else if (target.hasClass('bilibili-player-video-danmaku')) {
+                        danmu = $(mutation.addedNodes[0] || mutation.nextSibling || mutation.removedNodes || mutation.removedNodes);
+                    }  else if (target.hasClass('bilibili-danmaku') && mutation.addedNodes.length > 0) {
+                        danmu = target;
+                    } else if (GM_getValue('lightOn') === 1 && target.hasClass('bilibili-player-video-time-now')
+                               && target.text() != '00:00' && target.text() === $('.bilibili-player-video-time-total').text()){
+                        if ($('#heimu').css('display') === 'block') {
+                            this.keyHandler(this.getKeyCode('lightOff'));
+                        }
                     }
+                    this.danmuDIY(danmu);
                 });
             }).observe($('body')[0], {
                 childList: true,
