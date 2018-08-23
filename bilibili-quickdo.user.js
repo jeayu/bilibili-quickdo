@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.5
+// @version      0.9.5.2
 // @description  自动化设置,回车快速发弹幕、双击全屏,'+','-'调节播放速度、z键下载、f键全屏、w键网页全屏、p键暂停/播放、d键开/关弹幕、y键关/开灯、I键、O键左右旋转等
 // @author       jeayu
 // @license      MIT
@@ -129,17 +129,15 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             return this.keyCode[this.config.quickDo[type]];
         },
         bindKeydown: function () {
-            if ($(document).data('events').keydown) {
-                return;
-            }
-            $(document).keydown(e => {
-                if ($('input:focus, textarea:focus').length > 0) {
-                    this.pushDanmuHandler(e.keyCode);
-                } else {
+            $(document).off('keydown').on('keydown', e => {
+                if ($('input:focus, textarea:focus').length <= 0) {
                     if (!e.ctrlKey && !e.shiftKey && !e.altKey) {
                         this.keyHandler(e.keyCode);
                     }
                 }
+            });
+            $('input.bilibili-player-video-danmaku-input').on('keydown', e => {
+                this.pushDanmuHandler(e.keyCode);
             });
         },
         keyHandler: function (keyCode) {
@@ -150,10 +148,10 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             const oldDanmuBtn = $('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
             if (keyCode === this.getKeyCode('addSpeed') && h5Player.playbackRate < 4) {
                 h5Player.playbackRate += 0.25;
-                this.showInfoAnimate(h5Player.playbackRate + ' X');
+                this.showInfoAnimate(`${h5Player.playbackRate} X`);
             } else if (keyCode === this.getKeyCode('subSpeed') && h5Player.playbackRate > 0.5) {
                 h5Player.playbackRate -= 0.25;
-                this.showInfoAnimate(h5Player.playbackRate + ' X');
+                this.showInfoAnimate(`${h5Player.playbackRate} X`);
             } else if (keyCode === this.getKeyCode('rotateRight')) {
                 this.h5PlayerRotate(1);
             } else if (keyCode === this.getKeyCode('rotateLeft')) {
@@ -246,13 +244,12 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 this.keyHandler(this.getKeyCode('lightOff'));
             }
             if (GM_getValue('fullscreen') === ON && !player.isFullScreen()) {
-                // TODO 新版直接fullscreen有点问题
-                player.mode(WEBFULLSCREEN);
                 player.mode(FULLSCREEN);
             } else if (GM_getValue('webFullscreen') === ON) {
                 player.mode(WEBFULLSCREEN);
             } else if (GM_getValue('widescreen') === ON) {
-                player.mode(WIDESCREEN);
+                // TODO 新版直接WIDESCREEN有点问题
+                setTimeout(() => player.mode(WIDESCREEN), 200);
             }
             if (GM_getValue('playAndPause') === ON) {
                 h5Player.play();
@@ -316,7 +313,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 || danmuInput.css('display') === 'none') {
                 return;
             }
-            if ($('input.bilibili-player-video-danmaku-input:focus').length <= 0) {
+            if (!danmuInput.is(':focus')) {
                 this.triggerSleep(danmuInput, 'mouseover').then(() => {
                     if (player.isFullScreen() && !$('.bilibili-player-video-control-wrap')[0]) {
                         $('div.bilibili-player-video-sendbar').css('opacity', 1).show();
@@ -368,10 +365,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             return 0;
         },
         addStyle: function (cssArr) {
-            let css = '<style type="text/css">';
-            cssArr.forEach(c => css += c);
-            css += '</style>';
-            $('head').append(css);
+            $('head').append(`<style type="text/css">${cssArr.join('')}</style>`);
         },
         initSettingHTML: function () {
             const configs = {
