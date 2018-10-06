@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.6
+// @version      0.9.6.1
 // @description  自动化设置,回车快速发弹幕、双击全屏,'+','-'调节播放速度、z键下载、f键全屏、w键网页全屏、p键暂停/播放、d键开/关弹幕、y键关/开灯、I键、O键左右旋转等
 // @author       jeayu
 // @license      MIT
@@ -71,6 +71,10 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             'x': 88,
             'y': 89,
             'z': 90,
+            'left': 37,
+            'up': 38,
+            'right': 39,
+            'down': 40,
         },
         config: {
             quickDo: {
@@ -147,12 +151,18 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 const input = $('input.bilibili-player-video-time-seek');
                 const isNum = e.keyCode >= 48 && e.keyCode <= 57 || e.keyCode >= 96 && e.keyCode <= 105;
                 const isDot = e.keyCode == 110 || e.keyCode == 190;
-                input.val(input.val().replace('.',':'));
+                const isDelete = e.keyCode == 8 || e.keyCode == 46;
+                const isDirection = e.keyCode == this.keyCode.left || e.keyCode == this.keyCode.right;
+                input.val(input.val().replace('.', ':'));
                 if (e.keyCode == this.keyCode.enter) {
                     input.mouseout();
                     setTimeout(() => this.showInfoAnimate($('.bilibili-player-video-time-now').html()), 200);
-                } else if (!isNum && !isDot) {
-                    input.blur().mouseout();
+                } else if (!isNum && !isDot && !isDelete && !isDirection) {
+                    if (e.keyCode == this.getKeyCode('seek')) {
+                        input.blur().mouseout();
+                    } else {
+                        e.preventDefault();
+                    }
                 }
             });
         },
@@ -276,7 +286,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             } else if (GM_getValue('webFullscreen') === ON) {
                 player.mode(WEBFULLSCREEN);
             } else if (GM_getValue('widescreen') === ON) {
-                player.mode(WIDESCREEN)
+                player.mode(WIDESCREEN);
             }
             if (GM_getValue('playAndPause') === ON) {
                 h5Player.play();
