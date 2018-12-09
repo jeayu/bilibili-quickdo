@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.6.2
+// @version      0.9.6.3
 // @description  自动化设置,回车快速发弹幕、双击全屏,'+','-'调节播放速度、z键下载、f键全屏、w键网页全屏、p键暂停/播放、d键开/关弹幕、y键关/开灯、I键、O键左右旋转等
 // @author       jeayu
 // @license      MIT
@@ -23,7 +23,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
 
 (function () {
     'use strict';
-    window.q = function (selector) {
+    const q = function (selector) {
         let nodes = {};
         if (typeof selector === 'string') {
             const elements = document.querySelectorAll(selector)
@@ -236,7 +236,6 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         getKeyCode: function (type) {
             return this.keyCode[this.config.quickDo[type]];
         },
-        
         bindKeydown: function () {
             this.keydownFn = this.keydownFn || (e=> {
                 if (!q('input:focus, textarea:focus').length) {
@@ -258,10 +257,13 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 input.val(input.val().replace('.', ':'));
                 if (e.keyCode == this.keyCode.enter) {
                     input.mouseout();
+                    this.oldControlHide() || this.newControlHide();
                     setTimeout(() => this.showInfoAnimate(q('.bilibili-player-video-time-now').text()), 200);
                 } else if (!isNum && !isDot && !isDelete && !isDirection) {
                     if (e.keyCode == this.getKeyCode('seek')) {
-                        input.blur().mouseout();
+                        input.css("display", "none");
+                        q('.bilibili-player-video-time-wrap').css("display", "block");
+                        this.oldControlHide() || this.newControlHide();
                     } else {
                         e.preventDefault();
                     }
@@ -347,6 +349,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             } else if (keyCode >= this.keyCode['0'] && keyCode <= this.keyCode['9']) {
                this.setVideoCurrentTime(h5Player.duration / 10 * (keyCode - this.keyCode['0']));
             } else if (keyCode === this.getKeyCode('seek')) {
+                this.oldControlShow() ||  this.newControlShow();
                 this.triggerSleep(q('.bilibili-player-video-time-wrap').mouseover())
                     .then(() => q('input.bilibili-player-video-time-seek').select()).catch(() => {});
                 return true;
@@ -363,6 +366,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                     this.showInfoAnimate(`开启${danmuOpt.text()}`);
                 }
             }
+            this.oldControlHide();
             return false;
         },
         autoHandler: function () {
@@ -464,22 +468,41 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             }
             if (!q('input.bilibili-player-video-danmaku-input:focus').length) {
                 this.triggerSleep(danmuInput, 'mouseover').then(() => {
-                    if (player.isFullScreen() && !q('.bilibili-player-video-control-wrap')[0]) {
-                        q('div.bilibili-player-video-sendbar').css('opacity', 1).css('display', 'block');
+                    if (player.isFullScreen() && this.isOldControl()) {
+                        q('.bilibili-player-video-sendbar').css('opacity', 1).css('display', 'block');
                         q('.bilibili-player-video-sendbar').css('display','flex');
+                    } else {
+                        this.newControlShow();
                     }
                     danmuInput.select().click();
                 }).catch(() => {});
             } else {
                 this.triggerSleep(danmuInput, 'mouseout').then(() => {
                     danmuInput.blur();
-                    if (player.isFullScreen() && !q('.bilibili-player-video-control-wrap')[0]) {
-                        q('div.bilibili-player-video-sendbar').css('opacity', 0).css('display', 'none');
+                    if (player.isFullScreen() && this.isOldControl()) {
+                        q('.bilibili-player-video-sendbar').css('opacity', 0).css('display', 'none');
                         q('.bilibili-player-video-sendbar').css('display','');
+                    } else {
+                        this.newControlHide();
                     }
                     q('.bilibili-player-video-control').click();
                 }).catch(() => {});
             }
+        },
+        isOldControl: function() {
+            return !q('.bilibili-player-video-control-wrap')[0];
+        },
+        oldControlShow: function() {
+            return player.isFullScreen() && this.isOldControl() && q('.bilibili-player-video-control').css('opacity', 1);
+        },
+        oldControlHide: function() {
+            return player.isFullScreen() && this.isOldControl() && q('.bilibili-player-video-control').css('opacity', 0);
+        },
+        newControlShow: function() {
+            q('.bilibili-player-area').addClass('video-control-show');
+        },
+        newControlHide: function() {
+            q('.bilibili-player-area').removeClass('video-control-show');
         },
         h5PlayerRotate: function (flag) {
             const h5Player = this.h5Player[0];
