@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.6.2
+// @version      0.9.6.3
 // @description  自动化设置,回车快速发弹幕、双击全屏,'+','-'调节播放速度、z键下载、f键全屏、w键网页全屏、p键暂停/播放、d键开/关弹幕、y键关/开灯、I键、O键左右旋转等
 // @author       jeayu
 // @license      MIT
@@ -23,11 +23,111 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
 
 (function () {
     'use strict';
+    const q = function (selector) {
+        let nodes = {};
+        if (typeof selector === 'string') {
+            const elements = document.querySelectorAll(selector)
+            for (let i = 0; i < elements.length; i++) {
+                nodes[i] = elements[i];
+            }
+            nodes.length = elements.length;
+            nodes.selectorStr = selector;
+        } else if (selector instanceof Node) {
+            nodes = {
+                0: selector,
+                length: 1,
+                selectorStr: '',
+            }
+        }
+        nodes.click = function (index = 0) {
+            nodes.length > index && nodes[index].click();
+            return this;
+        }
+        nodes.addClass = function (classes, index = 0) {
+            nodes.length > index && nodes[index].classList.add(classes);
+            return this;
+        }
+        nodes.removeClass = function (classes, index = 0) {
+            nodes.length > index && nodes[index].classList.remove(classes);
+            return this;
+        }
+        nodes.text = function (index = 0) {
+            return nodes[index].textContent;
+        }
+        nodes.css = function (name, value, index = 0) {
+            nodes.length > index && nodes[index].style.setProperty(name, value);
+            return this;
+        }
+        nodes.getCss = function (name, index = 0) {
+            return nodes.length > index && nodes[index].ownerDocument.defaultView.getComputedStyle(nodes[index], null).getPropertyValue(name);
+        }
+        nodes.mouseover = function (index = 0) {
+            return this.trigger('mouseover', index);
+        }
+        nodes.mouseout = function (index = 0) {
+            return this.trigger('mouseout', index);
+        }
+        nodes.attr = function (name, index = 0) {
+            const result = nodes.length > index ? nodes[index].attributes[name] : undefined;
+            return result && result.value;
+        }
+        nodes.hasClass = function (className, index = 0) {
+            return nodes.length > index && nodes[index].className.match(new RegExp(`(\\s|^)${className}(\\s|$)`));
+        }
+        nodes.append = function (text, index = 0) {
+            nodes[index].insertAdjacentHTML("beforeend", text);
+            return this;
+        }
+        nodes.find = function (name) {
+            return q(`${this.selectorStr} ${name}`);
+        }
+        nodes.toggleClass = function (className, flag, index = 0) {
+            return flag ? this.addClass(className, index) : this.removeClass(className, index);
+        }
+        nodes.next = function (index = 0) {
+            return nodes.length > index && nodes[index].nextElementSibling ? q(nodes[index].nextElementSibling) : {0: undefined};
+        }
+        nodes.prev = function (index = 0) {
+            return nodes.length > index && nodes[index].previousElementSibling ? q(nodes[index].previousElementSibling) : {0: undefined};
+        }
+        nodes.trigger = function (event, index = 0) {
+            if (nodes.length > index) {
+                const evt = document.createEvent('Event');
+                evt.initEvent(event, true, true);
+                nodes[index].dispatchEvent(evt);
+            }
+            return this;
+        }
+        nodes.last = function () {
+            return q(nodes[nodes.length - 1]);
+        }
+        nodes.on = function (event, fn, index = 0) {
+            nodes.length > index && nodes[index].addEventListener(event, fn);
+            return this;
+        }
+        nodes.select = function (index = 0) {
+            nodes.length > index && nodes[index].select();
+            return this;
+        }
+        nodes.blur = function (index = 0) {
+            nodes.length > index && nodes[index].blur();
+            return this;
+        }
+        nodes.val = function (value, index = 0) {
+            if (value) {
+                nodes[index].value = value;
+                return this;
+            }
+            return nodes[index].value;
+        }
+        return nodes;
+    }
     const [ON, OFF] = [1, 0];
     const [FULLSCREEN, WEBFULLSCREEN, WIDESCREEN] = [3, 2, 1];
     const bilibiliQuickDo = {
-        h5Player: null,
-        infoAnimateTimer: null,
+        h5Player: undefined,
+        infoAnimateTimer: undefined,
+        keydownFn: undefined,
         keyCode: {
             'enter': 13,
             'esc': 27,
@@ -100,7 +200,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 'seek': 'x',
             },
             auto: {
-                'switch': ON, //总开关
+                'switch': ON, // 总开关
                 'play': ON,
                 'fullscreen': ON,
                 'webFullscreen': OFF,
@@ -121,7 +221,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             });
         },
         initInfoStyle: function () {
-            if ($('.bilibili-player-infoHint')[0]) {
+            if (q('.bilibili-player-infoHint')[0]) {
                 return;
             }
             const cssArr = [
@@ -131,24 +231,25 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             ];
             const html = '<div class="bilibili-player-infoHint" style="opacity: 0; display: none;"><span class="bilibili-player-infoHint-text">1</span></div>';
             this.addStyle(cssArr);
-            $('div.bilibili-player-video-wrap').append(html);
+            q('div.bilibili-player-video-wrap').append(html);
         },
         getKeyCode: function (type) {
             return this.keyCode[this.config.quickDo[type]];
         },
         bindKeydown: function () {
-            $(document).off('keydown').on('keydown', e => {
-                if ($('input:focus, textarea:focus').length <= 0) {
+            this.keydownFn = this.keydownFn || (e=> {
+                if (!q('input:focus, textarea:focus').length) {
                     if (!e.ctrlKey && !e.shiftKey && !e.altKey) {
                         this.keyHandler(e.keyCode) && e.preventDefault();
                     }
                 }
             });
-            $('input.bilibili-player-video-danmaku-input').on('keydown', e => {
+            q(document).on('keydown', this.keydownFn);
+            q('input.bilibili-player-video-danmaku-input').on('keydown', e => {
                 this.pushDanmuHandler(e.keyCode);
             });
-            $('input.bilibili-player-video-time-seek').on('keydown', e => {
-                const input = $('input.bilibili-player-video-time-seek');
+            q('input.bilibili-player-video-time-seek').on('keydown', e => {
+                const input = q('input.bilibili-player-video-time-seek');
                 const isNum = e.keyCode >= 48 && e.keyCode <= 57 || e.keyCode >= 96 && e.keyCode <= 105;
                 const isDot = e.keyCode == 110 || e.keyCode == 190;
                 const isDelete = e.keyCode == 8 || e.keyCode == 46;
@@ -156,10 +257,13 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 input.val(input.val().replace('.', ':'));
                 if (e.keyCode == this.keyCode.enter) {
                     input.mouseout();
-                    setTimeout(() => this.showInfoAnimate($('.bilibili-player-video-time-now').html()), 200);
+                    this.oldControlHide() || this.newControlHide();
+                    setTimeout(() => this.showInfoAnimate(q('.bilibili-player-video-time-now').text()), 200);
                 } else if (!isNum && !isDot && !isDelete && !isDirection) {
                     if (e.keyCode == this.getKeyCode('seek')) {
-                        input.blur().mouseout();
+                        input.css("display", "none");
+                        q('.bilibili-player-video-time-wrap').css("display", "block");
+                        this.oldControlHide() || this.newControlHide();
                     } else {
                         e.preventDefault();
                     }
@@ -169,9 +273,9 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         keyHandler: function (keyCode) {
             const h5Player = this.h5Player[0];
             let danmuOpt;
-            const newDanmuSetting = $('.bilibili-player-video-danmaku-setting');
-            const newDanmuBtn = $('.bilibili-player-video-danmaku-switch input');
-            const oldDanmuBtn = $('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
+            const newDanmuSetting = q('.bilibili-player-video-danmaku-setting');
+            const newDanmuBtn = q('.bilibili-player-video-danmaku-switch input');
+            const oldDanmuBtn = q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
             if (keyCode === this.getKeyCode('addSpeed') && h5Player.playbackRate < 4) {
                 h5Player.playbackRate += 0.25;
                 this.showInfoAnimate(`${h5Player.playbackRate} X`);
@@ -183,20 +287,20 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             } else if (keyCode === this.getKeyCode('rotateLeft')) {
                 this.h5PlayerRotate(-1);
             } else if (keyCode === this.getKeyCode('fullscreen')) {
-                $('.bilibili-player-video-btn-fullscreen').click();
-                if ($('.bilibili-player-video-btn-setting-panel-others-content-lightoff input')[0]) {
-                    $('body').hasClass('player-mode-blackmask')
-                    ? $('#heimu').css('display', 'block')
-                    : $('#heimu').css('display', '');
+                q('.bilibili-player-video-btn-fullscreen').click();
+                if (q('.bilibili-player-video-btn-setting-panel-others-content-lightoff input')[0]) {
+                    q('body').hasClass('player-mode-blackmask')
+                    ? q('#heimu').css('display', 'block')
+                    : q('#heimu').css('display', '');
                 }
             } else if (keyCode === this.getKeyCode('webFullscreen')) {
-                $('.bilibili-player-video-web-fullscreen').click();
+                q('.bilibili-player-video-web-fullscreen').click();
             } else if (keyCode === this.getKeyCode('widescreen')) {
-                $('.bilibili-player-video-btn-widescreen').click();
+                q('.bilibili-player-video-btn-widescreen').click();
             } else if (keyCode === this.getKeyCode('danmu')) {
                 if (newDanmuBtn[0]) {
                     newDanmuBtn.mouseover();
-                    this.showInfoAnimate($('.choose_danmaku').text());
+                    this.showInfoAnimate(q('.choose_danmaku').text());
                     newDanmuBtn.click().mouseout();
                 } else {
                     oldDanmuBtn.mouseover().click().mouseout();
@@ -214,7 +318,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             } else if (keyCode === this.getKeyCode('danmuPrevent')) {
                 const el = oldDanmuBtn.mouseover().mouseout().find('input[name="ctlbar_danmuku_prevent"]').next()[0] ||
                     newDanmuSetting.mouseover().mouseout().find('.bilibili-player-video-danmaku-setting-left-preventshade-box input')[0];
-                const e = $(el).click().mouseout();
+                const e = q(el).click().mouseout();
                 const text = e.text().length > 0 ? e.text() : e.next().text();
                 if (e.attr('data-pressed') === 'true' || e.attr('checked')) {
                     this.showInfoAnimate(`开启${text}`);
@@ -222,7 +326,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                     this.showInfoAnimate(`关闭${text}`);
                 }
             } else if (keyCode === this.getKeyCode('playAndPause')) {
-                $('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-start').click();
+                q('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-start').click();
             } else if (keyCode === this.getKeyCode('pushDanmu')) {
                 this.pushDanmuHandler(keyCode);
             } else if (keyCode === this.getKeyCode('mirror')) {
@@ -232,21 +336,22 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                     this.setH5PlayerRransform('rotateY(180deg)');
                 }
             } else if (keyCode === this.getKeyCode('lightOff')) {
-                if (!$('.bilibili-player-video-btn-setting-panel-others-content-lightoff input').click()[0]) {
-                    if ($('#heimu').css('display') === undefined) {
-                        $('body').append('<div id="heimu" style="display: block;"></div>');
-                    } else if ($('#heimu').css('display') === 'block') {
-                        $('#heimu').css('display', '')
+                if (!q('.bilibili-player-video-btn-setting-panel-others-content-lightoff input').click()[0]) {
+                    if (q('#heimu').css('display') === undefined) {
+                        q('body').append('<div id="heimu" style="display: block;"></div>');
+                    } else if (q('#heimu').getCss('display') === 'block') {
+                        q('#heimu').css('display', '')
                     } else {
-                        $('#heimu').css('display', 'block')
+                        q('#heimu').css('display', 'block')
                     }
-                    $('#bilibiliPlayer').toggleClass('mode-light-off', $('#heimu').css('display') === 'block');
+                    q('#bilibiliPlayer').toggleClass('mode-light-off', q('#heimu').getCss('display') === 'block');
                 }
             } else if (keyCode >= this.keyCode['0'] && keyCode <= this.keyCode['9']) {
                this.setVideoCurrentTime(h5Player.duration / 10 * (keyCode - this.keyCode['0']));
             } else if (keyCode === this.getKeyCode('seek')) {
-                this.triggerSleep($('.bilibili-player-video-time-wrap').mouseover())
-                    .then(() => $('input.bilibili-player-video-time-seek').select()).catch(() => {});
+                this.oldControlShow() ||  this.newControlShow();
+                this.triggerSleep(q('.bilibili-player-video-time-wrap').mouseover())
+                    .then(() => q('input.bilibili-player-video-time-seek').select()).catch(() => {});
                 return true;
             } else if (keyCode === this.getKeyCode('download')) {
                 window.open(player.getPlayurl());
@@ -261,6 +366,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                     this.showInfoAnimate(`开启${danmuOpt.text()}`);
                 }
             }
+            this.oldControlHide();
             return false;
         },
         autoHandler: function () {
@@ -269,16 +375,26 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             }
             const h5Player = this.h5Player[0];
             if (GM_getValue('highQuality') === ON || GM_getValue('vipHighQuality') === ON) {
-                $('.bilibili-player-video-quality-menu').mouseover().mouseout();
-                let btn = $('.bui-select-item');
-                btn = !btn[0] ? $('.bpui-selectmenu-list-row') : btn;
+                q('.bilibili-player-video-quality-menu').mouseover().mouseout();
+                let btn = q('.bui-select-item');
+                btn = !btn[0] ? q('.bpui-selectmenu-list-row') : btn;
                 if (GM_getValue('highQuality') === ON) {
-                    btn.filter((i, x) => !$(x).find('.bilibili-player-bigvip')[0]).first().click();
+                    for (let i = 0; i < btn.length; i++) {
+                        let vipFlag = false;
+                        for (let j = 0; j < btn[i].children.length && !vipFlag; j++) {
+                            vipFlag = ([].indexOf.call(btn[i].children[j].classList, 'bilibili-player-bigvip') === 0);
+                        }
+                        if (!vipFlag) {
+                            btn.click(i);
+                            break;
+                        }
+
+                    }
                 } else {
-                     btn.first().click();
+                    btn.click();
                 }
             }
-            if (GM_getValue('lightOff') === ON && $('#heimu').css('display') !== 'block') {
+            if (GM_getValue('lightOff') === ON && q('#heimu').getCss('display') !== 'block') {
                 this.keyHandler(this.getKeyCode('lightOff'));
             }
             if (GM_getValue('fullscreen') === ON && !player.isFullScreen()) {
@@ -295,35 +411,35 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 this.keyHandler(this.getKeyCode('danmu'));
             }
             if (GM_getValue('jump') === ON) {
-                $('.bilibili-player-video-toast-item-jump').click();
+                q('.bilibili-player-video-toast-item-jump').click();
             }
         },
         partHandler: function (keyCode) {
             let newPart;
-            let cur = $('.episode-item.on')[0] || $('.item.on')[0] || $('#multi_page .cur-list ul li.on')[0];
+            let cur = q('.episode-item.on')[0] || q('.item.on')[0] || q('#multi_page .cur-list ul li.on')[0];
             if (cur) {
-                cur = $(cur);
+                cur = q(cur);
                 if (keyCode === this.getKeyCode('nextPart')) {
                     newPart = cur.next();
                     if (!newPart[0]) {
-                        this.triggerSleep($('#multi_page .paging li.on').next())
-                            .then(() => $('#multi_page .cur-list ul li:first a')[0].click()).catch(() => {});
+                        this.triggerSleep(q('#multi_page .paging li.on').next())
+                            .then(() => q('#multi_page .cur-list ul li a').click()).catch(() => {});
                         return;
                     }
                 } else if (keyCode === this.getKeyCode('prevPart')) {
                     newPart = cur.prev();
                     if (!newPart[0]) {
-                        this.triggerSleep($('#multi_page .paging li.on').prev())
-                            .then(() => $('#multi_page .cur-list ul li:last a')[0].click()).catch(() => {});
+                        this.triggerSleep(q('#multi_page .paging li.on').prev())
+                            .then(() => q('#multi_page .cur-list ul li a').last().click()).catch(() => {});
                         return;
                     }
                 }
             }
             if (newPart && newPart[0]) {
-                if (newPart.find('a')[0]) {
-                    newPart.find('a')[0].click();
+                if (newPart[0].children && newPart[0].children.length) {
+                    newPart[0].children[0].click();
                 } else {
-                    newPart[0].click();
+                    newPart.click();
                 }
             }
         },
@@ -337,7 +453,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 }
             });
         },
-        setVideoCurrentTime: function(time) {
+        setVideoCurrentTime: function (time) {
             if (time > -1 && time <= this.h5Player[0].duration) {
                 this.h5Player[0].currentTime = time;
                 return true;
@@ -345,28 +461,48 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             return false;
         },
         pushDanmuHandler: function (keyCode) {
-            const danmuInput = $('input.bilibili-player-video-danmaku-input');
+            const danmuInput = q('input.bilibili-player-video-danmaku-input');
             if (keyCode !== this.getKeyCode('pushDanmu')
                 || danmuInput.css('display') === 'none') {
                 return;
             }
-            if (!danmuInput.is(':focus')) {
+            if (!q('input.bilibili-player-video-danmaku-input:focus').length) {
                 this.triggerSleep(danmuInput, 'mouseover').then(() => {
-                    if (player.isFullScreen() && !$('.bilibili-player-video-control-wrap')[0]) {
-                        $('div.bilibili-player-video-sendbar').css('opacity', 1).show();
-                        $('.bilibili-player-video-sendbar').css('display','flex');
+                    if (player.isFullScreen() && this.isOldControl()) {
+                        q('.bilibili-player-video-sendbar').css('opacity', 1).css('display', 'block');
+                        q('.bilibili-player-video-sendbar').css('display','flex');
+                    } else {
+                        this.newControlShow();
                     }
-                    danmuInput.select();
+                    danmuInput.select().click();
                 }).catch(() => {});
             } else {
                 this.triggerSleep(danmuInput, 'mouseout').then(() => {
                     danmuInput.blur();
-                    if (player.isFullScreen() && !$('.bilibili-player-video-control-wrap')[0]) {
-                        $('div.bilibili-player-video-sendbar').css('opacity', 0).hide();
-                        $('.bilibili-player-video-sendbar').css('display','');
+                    if (player.isFullScreen() && this.isOldControl()) {
+                        q('.bilibili-player-video-sendbar').css('opacity', 0).css('display', 'none');
+                        q('.bilibili-player-video-sendbar').css('display','');
+                    } else {
+                        this.newControlHide();
                     }
+                    q('.bilibili-player-video-control').click();
                 }).catch(() => {});
             }
+        },
+        isOldControl: function() {
+            return !q('.bilibili-player-video-control-wrap')[0];
+        },
+        oldControlShow: function() {
+            return player.isFullScreen() && this.isOldControl() && q('.bilibili-player-video-control').css('opacity', 1);
+        },
+        oldControlHide: function() {
+            return player.isFullScreen() && this.isOldControl() && q('.bilibili-player-video-control').css('opacity', 0);
+        },
+        newControlShow: function() {
+            q('.bilibili-player-area').addClass('video-control-show');
+        },
+        newControlHide: function() {
+            q('.bilibili-player-area').removeClass('video-control-show');
         },
         h5PlayerRotate: function (flag) {
             const h5Player = this.h5Player[0];
@@ -387,7 +523,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             this.h5Player.css('transform', transform);
         },
         getTransformCss: function (e) {
-            return e.css('-webkit-transform') || e.css('-moz-transform') || e.css('-ms-transform') || e.css('-o-transform') || 'none';
+            return e.getCss('-webkit-transform') || e.getCss('-moz-transform') || e.getCss('-ms-transform') || e.getCss('-o-transform') || 'none';
         },
         rotationDeg: function (e) {
             const transformCss = this.getTransformCss(e);
@@ -402,7 +538,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             return 0;
         },
         addStyle: function (cssArr) {
-            $('head').append(`<style type="text/css">${cssArr.join('')}</style>`);
+            q('head').append(`<style type="text/css">${cssArr.join('')}</style>`);
         },
         initSettingHTML: function () {
             const configs = {
@@ -419,38 +555,38 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 highQuality: { checkboxId: 'checkboxHQ', text: '自动最高画质' , contention:['vipHighQuality']},
                 vipHighQuality: { checkboxId: 'checkboxVHQ', text: '自动最高画质(大会员使用)' , contention:['highQuality']},
             };
-            const isNew = $('.bilibili-player-video-btn-setting').mouseover()[0] !== undefined ? true : $('.bilibili-player-setting-btn').click()[0] === undefined;
+            const isNew = q('.bilibili-player-video-btn-setting').mouseover()[0] !== undefined ? true : q('.bilibili-player-setting-btn').click()[0] === undefined;
             for (let [key, {checkboxId, text, contention}] of Object.entries(configs)) {
                 if (isNew) {
-                    $('.bilibili-player-video-btn-setting-panel-panel-others').append(this.getNewSettingHTML(checkboxId, text));
+                    q('.bilibili-player-video-btn-setting-panel-panel-others').append(this.getNewSettingHTML(checkboxId, text));
                 } else {
-                    $('.bilibili-player-advopt-wrap').append(this.getSettingHTML(checkboxId, text));
+                    q('.bilibili-player-advopt-wrap').append(this.getSettingHTML(checkboxId, text));
                 }
                 if (GM_getValue(key) === undefined) {
                     GM_setValue(key, this.config.auto[key]);
                 }
                 const checked = GM_getValue(key) === ON;
-                checked && isNew ? $(`#${checkboxId}`).click() : $(`#${checkboxId}-lable`).toggleClass('bpui-state-active', checked);
-                $(`#${checkboxId}`).click(function () {
+                checked && isNew ? q(`#${checkboxId}`).click() : q(`#${checkboxId}-lable`).toggleClass('bpui-state-active', checked);
+                q(`#${checkboxId}`).on('click', function () {
                     const gmvalue = GM_getValue(key) === ON ? OFF : ON;
                     GM_setValue(key, gmvalue);
                     if (gmvalue === ON) {
                         contention.forEach((k,i) => {
                             if (GM_getValue(k) === ON) {
-                                $(`#${configs[k].checkboxId}`).click();
+                                q(`#${configs[k].checkboxId}`).click();
                             }
                         });
                     }
                     if (!isNew) {
-                        $(this).next().toggleClass('bpui-state-active', gmvalue === ON);
+                        q(this).next().toggleClass('bpui-state-active', gmvalue === ON);
                     }
                 });
             }
             if (isNew) {
-                $('.bilibili-player-video-btn-setting').mouseout();
-                $('.bilibili-player-video-control .bilibili-player-video-btn-setting-panel').css('height', 'auto');
+                q('.bilibili-player-video-btn-setting').mouseout();
+                q('.bilibili-player-video-control .bilibili-player-video-btn-setting-panel').css('height', 'auto');
             } else {
-                $('i.bilibili-player-iconfont.bilibili-player-panel-back.icon-close:first').click();
+                q('i.bilibili-player-iconfont.bilibili-player-panel-back.icon-close').click();
             }
         },
         getSettingHTML: function (checkboxId, text) {
@@ -491,34 +627,27 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         showInfoAnimate: function (info) {
             clearTimeout(this.infoAnimateTimer);
-            $('div.bilibili-player-infoHint').stop().css('opacity', 1).show();
-            $('span.bilibili-player-infoHint-text')[0].innerHTML = info;
-            this.infoAnimateTimer = setTimeout(() => {
-                $('div.bilibili-player-infoHint').animate({
-                    opacity: 0
-                }, 300, () => {
-                    $(this).hide();
-                });
-            }, 1E3);
+            q('div.bilibili-player-infoHint').css('opacity', 1).css('display', 'block');
+            q('span.bilibili-player-infoHint-text')[0].innerHTML = info;
+            this.infoAnimateTimer = setTimeout(() => q('div.bilibili-player-infoHint').css('opacity', 0).css('display', 'none'), 1E3);
         },
-        danmuDIY: function(danmu) {
+        danmuDIY: function (danmu) {
             // 挖了一个坑
             if (danmu && danmu[0]) {
                 if (GM_getValue('danmuColor') === ON ) {
-                    const danmuColor = $('.bilibili-player-color-picker-inline-color-current').css('background-color')
-                    || $('.bilibili-player-color-picker-current-color').css('background-color') || 'rgb(255, 255, 255)';
+                    const danmuColor = q('.bui-color-picker-option-active').getCss('background-color') || 'rgb(255, 255, 255)';
                     danmu.css('color',danmuColor);
                 }
             }
         },
         init: function () {
             new MutationObserver((mutations, observer) => {
-                $ && mutations.forEach(mutation => {
+                mutations.forEach(mutation => {
                     let danmu;
-                    const target = $(mutation.target);
+                    const target = q(mutation.target);
                     if (mutation.previousSibling && target.attr('stage') === '1') {
                         try {
-                            this.h5Player = $('#bofqi .bilibili-player-video video');
+                            this.h5Player = q('#bofqi .bilibili-player-video video');
                             this.dblclickFullscreen();
                             this.initInfoStyle();
                             this.bindKeydown();
@@ -529,14 +658,14 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                             console.error('bilibili-quickdo init error:', e);
                         }
                     } else if (target.hasClass('bilibili-player-video')) {
-                        this.h5Player = $('#bofqi .bilibili-player-video video');
+                        this.h5Player = q('#bofqi .bilibili-player-video video');
                     } else if (target.hasClass('bilibili-player-video-danmaku')) {
-                        danmu = $(mutation.addedNodes[0] || mutation.nextSibling || mutation.removedNodes || mutation.previousSibling);
+                        danmu = q(mutation.addedNodes[0] || mutation.nextSibling || mutation.removedNodes || mutation.previousSibling);
                     }  else if (target.hasClass('bilibili-danmaku') && mutation.addedNodes.length > 0) {
                         danmu = target;
                     } else if (target.hasClass('bilibili-player-video-time-now')
-                               && target.text() != '00:00' && target.text() === $('.bilibili-player-video-time-total').text()){
-                        if (GM_getValue('lightOn') === ON && $('#heimu').css('display') === 'block') {
+                               && target.text() != '00:00' && target.text() === q('.bilibili-player-video-time-total').text()){
+                        if (GM_getValue('lightOn') === ON && q('#heimu').css('display') === 'block') {
                             this.keyHandler(this.getKeyCode('lightOff'));
                         }
                         if (GM_getValue('exitScreen') === ON) {
