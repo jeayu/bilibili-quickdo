@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.6.3
+// @version      0.9.6.4
 // @description  自动化设置,回车快速发弹幕、双击全屏,'+','-'调节播放速度、z键下载、f键全屏、w键网页全屏、p键暂停/播放、d键开/关弹幕、y键关/开灯、I键、O键左右旋转等
 // @author       jeayu
 // @license      MIT
@@ -72,7 +72,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             return result && result.value;
         }
         nodes.hasClass = function (className, index = 0) {
-            return nodes.length > index && nodes[index].className.match(new RegExp(`(\\s|^)${className}(\\s|$)`));
+            return nodes.length > index && nodes[index].className.match && nodes[index].className.match(new RegExp(`(\\s|^)${className}(\\s|$)`));
         }
         nodes.append = function (text, index = 0) {
             nodes[index].insertAdjacentHTML("beforeend", text);
