@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.6.4
+// @version      0.9.6.5
 // @description  自动化设置,回车快速发弹幕、双击全屏,'+','-'调节播放速度、z键下载、f键全屏、w键网页全屏、p键暂停/播放、d键开/关弹幕、y键关/开灯、I键、O键左右旋转等
 // @author       jeayu
 // @license      MIT
@@ -206,6 +206,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 'webFullscreen': OFF,
                 'widescreen': OFF,
                 'danmu': ON,
+                'bangumiDanmuOFF': OFF,
                 'jump': ON,
                 'lightOff': OFF,
                 'danmuColor': OFF,
@@ -337,7 +338,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 }
             } else if (keyCode === this.getKeyCode('lightOff')) {
                 if (!q('.bilibili-player-video-btn-setting-panel-others-content-lightoff input').click()[0]) {
-                    if (q('#heimu').css('display') === undefined) {
+                    if (!q('#heimu').getCss('display')) {
                         q('body').append('<div id="heimu" style="display: block;"></div>');
                     } else if (q('#heimu').getCss('display') === 'block') {
                         q('#heimu').css('display', '')
@@ -407,7 +408,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             if (GM_getValue('playAndPause') === ON) {
                 h5Player.play();
             }
-            if (GM_getValue('danmu') === OFF) {
+            if (GM_getValue('danmu') === OFF || GM_getValue('bangumiDanmuOFF') === ON && window.location.href.indexOf('bangumi') >= 0) {
                 this.keyHandler(this.getKeyCode('danmu'));
             }
             if (GM_getValue('jump') === ON) {
@@ -463,7 +464,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         pushDanmuHandler: function (keyCode) {
             const danmuInput = q('input.bilibili-player-video-danmaku-input');
             if (keyCode !== this.getKeyCode('pushDanmu')
-                || danmuInput.css('display') === 'none') {
+                || danmuInput.getCss('display') === 'none') {
                 return;
             }
             if (!q('input.bilibili-player-video-danmaku-input:focus').length) {
@@ -547,6 +548,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 webFullscreen: { checkboxId: 'checkboxAWF', text: '自动网页全屏' , contention:['fullscreen', 'widescreen'] },
                 widescreen: { checkboxId: 'checkboxAW', text: '自动宽屏' , contention:['webFullscreen', 'fullscreen'] },
                 danmu: { checkboxId: 'checkboxAD', text: '自动打开弹幕' , contention:[]},
+                bangumiDanmuOFF: { checkboxId: 'checkboxBDOFF', text: '番剧自动关弹幕' , contention:[]},
                 jump: { checkboxId: 'checkboxAJ', text: '自动转跳' },
                 lightOff: { checkboxId: 'checkboxALOFF', text: '自动关灯' , contention:[]},
                 danmuColor: { checkboxId: 'checkboxDMC', text: '统一弹幕颜色' , contention:[]},
@@ -665,7 +667,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         danmu = target;
                     } else if (target.hasClass('bilibili-player-video-time-now')
                                && target.text() != '00:00' && target.text() === q('.bilibili-player-video-time-total').text()){
-                        if (GM_getValue('lightOn') === ON && q('#heimu').css('display') === 'block') {
+                        if (GM_getValue('lightOn') === ON && q('#heimu').getCss('display') === 'block') {
                             this.keyHandler(this.getKeyCode('lightOff'));
                         }
                         if (GM_getValue('exitScreen') === ON) {
