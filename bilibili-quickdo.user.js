@@ -601,7 +601,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         getSettingHTML: function (checkboxId, text) {
             return `
             <div>
-                <input type="checkbox" id="${checkboxId}">
+                <input type="checkbox" id="${checkboxId}" class="bpui-component bpui-checkbox bpui-button">
                 <label for="${checkboxId}" id="${checkboxId}-lable" class="button bpui-button-text-only" role="button" data-pressed="false">
                     <span class="bpui-button-text">
                     <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12checkbox"></i>
