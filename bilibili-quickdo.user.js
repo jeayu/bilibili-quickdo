@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.6.8
+// @version      0.9.7
 // @description  自动化设置,回车快速发弹幕、双击全屏,'+','-'调节播放速度、z键下载、f键全屏、w键网页全屏、p键暂停/播放、d键开/关弹幕、y键关/开灯、I键、O键左右旋转等
 // @author       jeayu
 // @license      MIT
@@ -14,8 +14,8 @@
 // ==/UserScript==
 
 /*
-v0.9.6 更新：
-新增x键空降时间点(.号分割);新增自动选择最高画质
+v0.9.7 更新：
+更新旧版设置页面
 
 历史更新：
 https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
@@ -52,7 +52,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             return this;
         }
         nodes.text = function (index = 0) {
-            return nodes[index].textContent;
+            return nodes.length > index && nodes[index].textContent || '';
         }
         nodes.css = function (name, value, index = 0) {
             nodes.length > index && nodes[index].style.setProperty(name, value);
@@ -307,7 +307,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                     newDanmuBtn.click().mouseout();
                 } else {
                     oldDanmuBtn.mouseover().click().mouseout();
-                    this.showInfoAnimate(oldDanmuBtn.attr('data-text'));
+                    const tip = `${oldDanmuBtn.attr('name').indexOf('close') > -1 ? "关闭" : '打开'}弹幕`
+                    this.showInfoAnimate(tip);
                 }
             } else if (keyCode === this.getKeyCode('danmuTop')) {
                 let opt = oldDanmuBtn[0] ? oldDanmuBtn : newDanmuSetting;
@@ -387,7 +388,10 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 q('.bilibili-player-video-toast-item-jump').click();
             }
             if (GM_getValue('danmu') === OFF || GM_getValue('bangumiDanmuOFF') === ON && window.location.href.indexOf('bangumi') >= 0) {
-                this.keyHandler(this.getKeyCode('danmu'));
+                let flag = q('.bilibili-player-video-danmaku-switch input').mouseover().mouseout();
+                flag = q('.choose_danmaku').text().indexOf('关闭') > -1 ||
+                    !flag[0] && !q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku_close"]')[0];
+                flag && this.keyHandler(this.getKeyCode('danmu'));
             }
             this.AutoHandlerForReload();
             this.oldControlHide();
@@ -549,13 +553,24 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         initSettingHTML: function () {
             const isNew = q('.bilibili-player-video-btn-setting').mouseover()[0] !== undefined ? true : q('.bilibili-player-setting-btn').click()[0] === undefined;
+            let panel = q('.bilibili-player-video-btn-setting-panel-panel-others');
+            if (!isNew) {
+                q('.bilibili-player-video-control').append(`
+                    <div id="quick-do-setting-btn" class="bilibili-player-video-btn">
+                    <i class="bilibili-player-iconfont icon-24setting" style="font-size: 18px;"></i>
+                    <div id="quick-do-setting-panel" style="display: none;position: absolute;right: 0px;bottom: ${q('.bilibili-player-video-control').getCss('height')};background-color: white;padding: 10px;text-align: left;">
+                    </div>
+                `);
+                panel = q('#quick-do-setting-panel');
+                q('#quick-do-setting-btn').on('mouseover', () => {
+                    panel.css('display', 'block');
+                }).on('mouseout', () => {
+                    panel.css('display', 'none');
+                });
+            }
             for (let [key, { text, status, ban }] of Object.entries(this.config.checkbox)) {
                 const checkboxId = `cb-${key}`
-                if (isNew) {
-                    q('.bilibili-player-video-btn-setting-panel-panel-others').append(this.getNewSettingHTML(checkboxId, text));
-                } else {
-                    q('.bilibili-player-advopt-wrap').append(this.getSettingHTML(checkboxId, text));
-                }
+                panel.append(isNew ? this.getNewSettingHTML(checkboxId, text) : this.getSettingHTML(checkboxId, text));
                 if (GM_getValue(key) === undefined) {
                     GM_setValue(key, status);
                 }
@@ -585,8 +600,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         getSettingHTML: function (checkboxId, text) {
             return `
-            <div class="bilibili-player-fl bilibili-player-tooltip-trigger" data-tooltip="1" data-position="bottom-center" data-change-mode="1">
-                <input type="checkbox" class="bilibili-player-setting-fullscreensend bpui-component bpui-checkbox bpui-button" id="${checkboxId}">
+            <div>
+                <input type="checkbox" id="${checkboxId}">
                 <label for="${checkboxId}" id="${checkboxId}-lable" class="button bpui-button-text-only" role="button" data-pressed="false">
                     <span class="bpui-button-text">
                     <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12checkbox"></i>
@@ -595,7 +610,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                     <span class="bpui-checkbox-text">${text}</span>
                     </span>
                 </label>
-            </div>`;
+            </div>
+            `;
         },
         getNewSettingHTML: function (checkboxId, text) {
             return `
