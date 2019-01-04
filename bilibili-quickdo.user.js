@@ -197,7 +197,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 playAndPause: { value: 'p', text: '暂停播放', },
                 nextPart: { value: 'l', text: '下一P', },
                 prevPart: { value: 'k', text: '上一P', },
-                pushDanmu: { value: 'enter', text: '发弹幕', },
+                showDanmuInput: { value: 'enter', text: '发弹幕', },
                 mirror: { value: 'j', text: '镜像', },
                 danmuTop: { value: 't', text: '顶部弹幕', },
                 danmuBottom: { value: 'b', text: '底部弹幕', },
@@ -404,37 +404,30 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         jump: function () {
             q('.bilibili-player-video-toast-item-jump').click();
         },
+        rotateRight: function () {
+            this.h5PlayerRotate(1);
+        },
+        rotateLeft: function () {
+            this.h5PlayerRotate(-1);
+        },
+        download: function () {
+            window.open(player.getPlayurl());
+        },
+        nextPart: function () {
+            this.partHandler(true);
+        },
+        prevPart: function () {
+            this.partHandler(false);
+        },
         keyHandler: function (e) {
             const {keyCode, ctrlKey, shiftKey, altKey} = e;
             if (ctrlKey || shiftKey || altKey) {
                 return;
             }
-            keyCode === this.getKeyCode('addSpeed') ? this.addSpeed() :
-                keyCode === this.getKeyCode('subSpeed') ? this.subSpeed() :
-                keyCode === this.getKeyCode('resetSpeed') ? this.resetSpeed() :
-                keyCode === this.getKeyCode('rotateRight') ? this.h5PlayerRotate(1) :
-                keyCode === this.getKeyCode('rotateLeft') ? this.h5PlayerRotate(-1) :
-                keyCode === this.getKeyCode('fullscreen') ? this.fullscreen() :
-                keyCode === this.getKeyCode('webFullscreen') ? this.webFullscreen() :
-                keyCode === this.getKeyCode('widescreen') ? this.widescreen() :
-                keyCode === this.getKeyCode('danmu') ? this.danmu() :
-                keyCode === this.getKeyCode('danmuTop') ? this.danmuTop() :
-                keyCode === this.getKeyCode('danmuBottom') ? this.danmuBottom() :
-                keyCode === this.getKeyCode('danmuScroll') ? this.danmuScroll() :
-                keyCode === this.getKeyCode('danmuPrevent') ? this.danmuPrevent() :
-                keyCode === this.getKeyCode('playAndPause') ? this.playAndPause() :
-                keyCode === this.getKeyCode('pushDanmu') ? this.showDanmuInput() :
-                keyCode === this.getKeyCode('mirror') ? this.mirror() :
-                keyCode === this.getKeyCode('lightOff') ? this.lightOff() :
-                keyCode === this.getKeyCode('seek') ? this.seek() && e.preventDefault() :
-                keyCode === this.getKeyCode('mute') ? this.mute() :
-                keyCode === this.getKeyCode('download') ? window.open(player.getPlayurl()) :
-                keyCode === this.getKeyCode('nextPart') ? this.partHandler(true) :
-                keyCode === this.getKeyCode('prevPart') ? this.partHandler(false) :
-                keyCode === this.getKeyCode('jump') ? this.jump() :
-                keyCode >= this.keyCode['0'] && keyCode <= this.keyCode['9'] ?
-                this.setVideoCurrentTime(this.h5Player[0].duration / 10 * (keyCode - this.keyCode['0'])) :
-                false;
+            Object.keys(this.config.quickDo)
+                .findIndex(key => keyCode === this.getKeyCode(key) && (!eval(`this.${key}()`) || !e.preventDefault())) > 0 ||
+                keyCode >= this.keyCode['0'] && keyCode <= this.keyCode['9'] &&
+                this.setVideoCurrentTime(this.h5Player[0].duration / 10 * (keyCode - this.keyCode['0']));
             e.defaultPrevented || this.oldControlHide();
         },
         autoHandler: function () {
@@ -785,7 +778,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         danmu = target;
                     } else if (target.hasClass('bilibili-player-video-time-now')
                                && target.text() != '00:00' && target.text() === q('.bilibili-player-video-time-total').text()) {
-                        if (this.partHandler(true)) {
+                        if (this.nextPart()) {
                             return;
                         }
                         if (GM_getValue('lightOn') === ON && q('#heimu').getCss('display') === 'block') {
