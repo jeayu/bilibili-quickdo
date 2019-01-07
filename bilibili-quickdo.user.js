@@ -697,7 +697,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 </div>
             `);
             const keyPanel = q('#quick-do-setting-key-panel');
-            q('#quick-do-setting-key-btn').on('mouseover', () => keyPanel.getCss('display') == 'none' ? keyPanel.css('display', 'block') : keyPanel.css('display', 'none'));
+            q('#quick-do-setting-key-btn').on('click', () => keyPanel.getCss('display') == 'none' ? keyPanel.css('display', 'block') : keyPanel.css('display', 'none'));
             for (let [key, { value, text }] of Object.entries(this.config.quickDo)) {
                 if (this.getQuickDoKey(key) === undefined) {
                     this.saveQuickDoKey(key, value);
