@@ -228,14 +228,15 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 lightOn: { text: '播放结束自动开灯', status: OFF, ban:[] },
                 exitScreen: { text: '播放结束还原屏幕', status: OFF, ban:['exit2WideScreen'] },
                 exit2WideScreen: { text: '播放结束还原宽屏', status: OFF, ban:['exitScreen'] },
+                hideSenderBar: { text: '隐藏弹幕栏', status: OFF, ban:[] },
                 highQuality: { text: '自动最高画质', status: OFF, ban:['vipHighQuality'] },
                 vipHighQuality: { text: '自动最高画质(大会员使用)', status: OFF, ban:['highQuality'] },
             },
         },
-        dblclickFullscreen: function () {
-            player.addEventListener('dblclick', () => {
-                GM_getValue('dblclick')  === ON && this.fullscreen();
-            });
+        bindPlayerEvent: function () {
+            player.addEventListener('dblclick', () => GM_getValue('dblclick')  === ON && this.fullscreen());
+            player.addEventListener('video_resize', () => this.hideSenderBar());
+            player.addEventListener('video_media_ended', () => this.handerVideoEnded());
         },
         initInfoStyle: function () {
             if (q('.bilibili-player-infoHint')[0]) {
@@ -283,7 +284,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                     }
                 }
             });
-            this.dblclickFullscreen();
+            this.bindPlayerEvent();
         },
         bindDanmuInputKeydown: function () {
             q('input.bilibili-player-video-danmaku-input').on('keydown', e => {
@@ -316,6 +317,9 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         isFullScreen: function () {
             return q('#bilibiliPlayer').hasClass('mode-fullscreen');
+        },
+        isWebFullscreen: function () {
+            return q('#bilibiliPlayer').hasClass('mode-webfullscreen');
         },
         webFullscreen: function () {
             this.isFullScreen() ? player.mode(WEBFULLSCREEN) : q('.bilibili-player-video-web-fullscreen').click();
@@ -428,7 +432,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 return;
             }
             Object.keys(this.config.quickDo)
-                .findIndex(key => keyCode === this.getKeyCode(key) && (!eval(`this.${key}()`) || !e.preventDefault())) > 0 ||
+                .some(key => keyCode === this.getKeyCode(key) && (!eval(`this.${key}()`) || !e.preventDefault())) ||
                 keyCode >= this.keyCode['0'] && keyCode <= this.keyCode['9'] &&
                 this.setVideoCurrentTime(this.h5Player[0].duration / 10 * (keyCode - this.keyCode['0']));
             e.defaultPrevented || this.oldControlHide();
@@ -458,6 +462,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             }
             this.autoHandlerForReload();
             this.oldControlHide();
+            this.hideSenderBar();
         },
         autoHandlerForReload: function () {
             if (!this.reload) {
@@ -535,43 +540,38 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             return false;
         },
         showDanmuInput: function () {
+            this.showSenderBar();
             const danmuInput = q('input.bilibili-player-video-danmaku-input');
             if (!q('input.bilibili-player-video-danmaku-input:focus').length) {
                 this.triggerSleep(danmuInput, 'mouseover').then(() => {
-                    if (this.isFullScreen() && this.isOldControl()) {
-                        q('.bilibili-player-video-sendbar').css('opacity', 1).css('display', 'flex');
-                    } else {
-                        this.newControlShow();
-                    }
+                    this.isNew && (this.isFullScreen() || this.isWebFullscreen()) && this.newControlShow();
                     danmuInput.select().click();
                 }).catch(() => {});
-            } 
+            }
         },
         hideDanmuInput: function () {
+            this.hideSenderBar();
             const danmuInput = q('input.bilibili-player-video-danmaku-input');
-            if (q('input.bilibili-player-video-danmaku-input:focus').length) {
-                this.triggerSleep(danmuInput, 'mouseout').then(() => {
-                    danmuInput.blur();
-                    if (this.isFullScreen() && this.isOldControl()) {
-                        q('.bilibili-player-video-sendbar').css('opacity', 0).css('display', 'none');
-                    } else {
-                        this.newControlHide();
-                    }
-                    q('.bilibili-player-video-control').click();
-                }).catch(() => {});
-            }
+            this.triggerSleep(danmuInput, 'mouseout').then(() => {
+                !this.isNew && this.isFullScreen() ? this.hideSenderBar(true) : this.newControlHide();
+                danmuInput.blur();
+                q('.bilibili-player-video-control').click();
+            }).catch(() => {});
+        },
+        hideSenderBar: function (flag = false) {
+            (flag || GM_getValue('hideSenderBar') === ON) && q('.bilibili-player-video-sendbar').css('opacity', 0).css('display', 'none');
+        },
+        showSenderBar: function () {
+            q('.bilibili-player-video-sendbar').css('opacity', 1).css('display', 'flex');
         },
         isRepeatPlay: function () {
             return q('.icon-24repeaton').length || this.isNew && !q('.bilibili-player-video-btn-repeat.closed').length;
         },
-        isOldControl: function() {
-            return !this.isNew;
-        },
         oldControlShow: function() {
-            return this.isFullScreen() && this.isOldControl() && q('.bilibili-player-video-control').css('opacity', 1);
+            return this.isFullScreen() && !this.isNew && q('.bilibili-player-video-control').css('opacity', 1);
         },
         oldControlHide: function() {
-            return this.isFullScreen() && this.isOldControl() && q('.bilibili-player-video-control').css('opacity', 0);
+            return this.isFullScreen() && !this.isNew && q('.bilibili-player-video-control').css('opacity', 0);
         },
         newControlShow: function() {
             q('.bilibili-player-area').addClass('video-control-show');
@@ -753,6 +753,19 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 }
             }
         },
+        handerVideoEnded: function () {
+            if (this.isRepeatPlay() || this.partHandler(true)) {
+                return;
+            }
+            if (GM_getValue('lightOn') === ON && q('#heimu').getCss('display') === 'block') {
+                this.lightOff();
+            }
+            if (GM_getValue('exitScreen') === ON) {
+                player.mode(DEFAULT);
+            } else if  (GM_getValue('exit2WideScreen') === ON) {
+                player.mode(WIDESCREEN);
+            }
+        },
         init: function () {
             let stageFlag = undefined;
             new MutationObserver((mutations, observer) => {
@@ -782,19 +795,6 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         danmu = q(mutation.addedNodes[0] || mutation.nextSibling || mutation.removedNodes || mutation.previousSibling);
                     }  else if (target.hasClass('bilibili-danmaku') && mutation.addedNodes.length > 0) {
                         danmu = target;
-                    } else if (target.hasClass('bilibili-player-video-time-now')
-                               && target.text() != '00:00' && target.text() === q('.bilibili-player-video-time-total').text()) {
-                        if (this.isRepeatPlay() || this.partHandler(true)) {
-                            return;
-                        }
-                        if (GM_getValue('lightOn') === ON && q('#heimu').getCss('display') === 'block') {
-                            this.lightOff();
-                        }
-                        if (GM_getValue('exitScreen') === ON) {
-                            player.mode(DEFAULT);
-                        } else if  (GM_getValue('exit2WideScreen') === ON) {
-                            player.mode(WIDESCREEN);
-                        }
                     }
                     this.danmuDIY(danmu);
                 });
