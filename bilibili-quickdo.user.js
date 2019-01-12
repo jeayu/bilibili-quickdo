@@ -212,6 +212,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 mute: { value: 'm', text: '静音', },
                 jump: { value: '', text: '跳转', },
                 scroll2Top: { value: '', text: '回到顶部', },
+                jumpContent: { value: '', text: '跳过鸣谢', },
             },
             checkboxes: {
                 checkbox: {
@@ -246,6 +247,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         lightOn: { text: '播放结束自动开灯', status: OFF, ban:[] },
                         exitScreen: { text: '播放结束还原屏幕', status: OFF, ban:['exit2WideScreen'] },
                         exit2WideScreen: { text: '播放结束还原宽屏', status: OFF, ban:['exitScreen'] },
+                        autoJumpContent: { text: '跳过充电鸣谢', status: OFF, ban:[] },
                     },
                     btn: '播放结束自动设置',
                 },
@@ -442,6 +444,9 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         jump: function () {
             q('.bilibili-player-video-toast-item-jump').click();
+        },
+        jumpContent: function () {
+            q('.bilibili-player-electric-panel-jump-content').click()
         },
         rotateRight: function () {
             this.h5PlayerRotate(1);
@@ -802,6 +807,9 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             }
         },
         handerVideoEnded: function () {
+            if (GM_getValue('autoJumpContent') === ON) {
+                setTimeout(() => this.jumpContent(), 0);
+            }
             if (this.isRepeatPlay() || this.partHandler(true)) {
                 return;
             }
