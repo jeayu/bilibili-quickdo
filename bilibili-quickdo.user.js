@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.8.5
+// @version      0.9.8.6
 // @description  快捷键设置,回车快速发弹幕,双击全屏,自动选择最高清画质、播放、全屏、关闭弹幕、自动转跳和自动关灯等
 // @author       jeayu
 // @license      MIT
@@ -120,16 +120,28 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             }
             return nodes[index].value;
         }
+        nodes.offsetTop = function (index = 0) {
+            if (nodes.length <= index) {
+                return 0;
+            }
+            let n = nodes[index];
+            let top = 0;
+            while (n = n.offsetParent) {
+                top += n.offsetTop;
+            }
+            return top;
+        }
         return nodes;
     }
     const [ON, OFF] = [1, 0];
     const [FULLSCREEN, WEBFULLSCREEN, WIDESCREEN, DEFAULT] = [3, 2, 1, 0];
     const bilibiliQuickDo = {
         h5Player: undefined,
-        infoAnimateTimer: undefined,
+        hintTimer: undefined,
         keydownFn: undefined,
         reload: true,
         isNew: false,
+        isBangumi: false,
         keyCode: {
             'enter': 13,
             'esc': 27,
@@ -213,6 +225,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 jump: { value: '', text: '跳转', },
                 scroll2Top: { value: '', text: '回到顶部', },
                 jumpContent: { value: '', text: '跳过鸣谢', },
+                playerSetOnTop: { value: '', text: '播放器置顶', },
             },
             checkboxes: {
                 checkbox: {
@@ -221,9 +234,10 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         hint: { text: '快捷键提示', status: ON, ban:[] },
                         autoHint: { text: '自动操作提示', status: ON, ban:[] },
                         reloadPart: { text: '换P重新加载', status: OFF, ban:[] },
-                        danmuColor: { text: '统一弹幕颜色', status: OFF, ban:[] },
-                        hideSenderBar: { text: '隐藏弹幕栏', status: OFF, ban:[] },
-                        widescreenScroll2Top: { text: '宽屏回到顶部', status: OFF, ban:[] },
+                        danmuColor: { text: '统一弹幕颜色', status: OFF, ban:[], fn: 'initDanmuStyle' },
+                        hideSenderBar: { text: '隐藏弹幕栏', status: OFF, ban:[], fn: 'hideOrShowSenderBar' },
+                        widescreenScroll2Top: { text: '宽屏回到顶部', status: OFF, ban:['widescreenSetOnTop'], fn: 'setWidescreenPos' },
+                        widescreenSetOnTop: { text: '宽屏置顶', status: OFF, ban:['widescreenScroll2Top'], fn: 'setWidescreenPos' },
                     },
                     btn: '常规设置',
                 },
@@ -255,20 +269,23 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         bindPlayerEvent: function () {
             player.addEventListener('dblclick', () => GM_getValue('dblclick') === ON && this.fullscreen());
-            player.addEventListener('video_resize', () => this.hideSenderBar());
-            player.addEventListener('video_media_ended', () => this.handerVideoEnded());
+            player.addEventListener('video_resize', () => {
+                this.hideSenderBar();
+                this.isWidescreen && (!this.isNew || !q('.mini-player')[0]) && this.setWidescreenPos();
+            });
+            player.addEventListener('video_media_ended', () => this.videoEndedHander());
         },
-        initInfoStyle: function () {
+        initHintStyle: function () {
             if (q('.bilibili-player-infoHint')[0]) {
                 return;
             }
-            const cssArr = [
-                '.bilibili-player.mode-fullscreen .bilibili-player-area .bilibili-player-video-wrap .bilibili-player-infoHint{width: 160px; height: 42px; line-height: 42px; padding: 15px 18px 15px 12px; font-size: 28px; margin-left: -95px; margin-top: -36px;}',
-                '.bilibili-player .bilibili-player-area .bilibili-player-video-wrap .bilibili-player-infoHint{position: absolute; top: 50%; left: 50%; z-index: 30; width: 122px; height: 32px; line-height: 32px; padding: 9px 7px 9px 7px; font-size: 20px; margin-left: -70px; margin-top: -25px; border-radius: 4px; background: rgba(255,255,255,.8); color: #000; text-align: center;}',
-                '.bilibili-player .bilibili-player-area .bilibili-player-video-wrap .bilibili-player-infoHint-text{vertical-align: top; display: inline-block; overflow: visible; text-align: center;}'
-            ];
+            const css = `
+                .bilibili-player.mode-fullscreen .bilibili-player-area .bilibili-player-video-wrap .bilibili-player-infoHint{width: 160px; height: 42px; line-height: 42px; padding: 15px 18px 15px 12px; font-size: 28px; margin-left: -95px; margin-top: -36px;}
+                .bilibili-player .bilibili-player-area .bilibili-player-video-wrap .bilibili-player-infoHint{position: absolute; top: 50%; left: 50%; z-index: 30; width: 122px; height: 32px; line-height: 32px; padding: 9px 7px 9px 7px; font-size: 20px; margin-left: -70px; margin-top: -25px; border-radius: 4px; background: rgba(255,255,255,.8); color: #000; text-align: center;}
+                .bilibili-player .bilibili-player-area .bilibili-player-video-wrap .bilibili-player-infoHint-text{vertical-align: top; display: inline-block; overflow: visible; text-align: center;}
+            `;
             const html = '<div class="bilibili-player-infoHint" style="opacity: 0; display: none;"><span class="bilibili-player-infoHint-text">1</span></div>';
-            this.addStyle(cssArr);
+            this.addStyle(css);
             q('div.bilibili-player-video-wrap').append(html);
         },
         getKeyCode: function (type) {
@@ -293,7 +310,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 if (e.keyCode == this.keyCode.enter) {
                     input.mouseout();
                     this.oldControlHide() || this.newControlHide();
-                    setTimeout(() => this.showInfoAnimate(q('.bilibili-player-video-time-now').text()), 200);
+                    setTimeout(() => this.showHint(q('.bilibili-player-video-time-now').text()), 200);
                 } else if (!isNum && !isDot && !isDelete && !isDirection) {
                     if (e.keyCode == this.getKeyCode('seek')) {
                         input.css("display", "none");
@@ -314,18 +331,18 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         addSpeed: function () {
             if (this.h5Player[0].playbackRate < 4) {
                 this.h5Player[0].playbackRate += 0.25;
-                this.showInfoAnimate(`${this.h5Player[0].playbackRate} X`);
+                this.showHint(`${this.h5Player[0].playbackRate} X`);
             }
         },
         subSpeed: function () {
             if (this.h5Player[0].playbackRate > 0.5) {
                 this.h5Player[0].playbackRate -= 0.25;
-                this.showInfoAnimate(`${this.h5Player[0].playbackRate} X`);
+                this.showHint(`${this.h5Player[0].playbackRate} X`);
             }
         },
         resetSpeed: function () {
             this.h5Player[0].playbackRate = 1;
-            this.showInfoAnimate(`${this.h5Player[0].playbackRate} X`);
+            this.showHint(`${this.h5Player[0].playbackRate} X`);
         },
         fullscreen: function () {
             q('.bilibili-player-video-btn-fullscreen').click();
@@ -349,42 +366,44 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         widescreen: function () {
             this.isFullScreen() ? this.playerMode(WIDESCREEN) : q('.bilibili-player-video-btn-widescreen').click();
-            this.widescreenScroll2Top();
+            this.setWidescreenPos();
         },
         playerMode: function (mode) {
             player.mode(mode);
-            mode === WIDESCREEN && setTimeout(() => this.widescreenScroll2Top(), 100) ;
+            mode === WIDESCREEN && setTimeout(() => this.setWidescreenPos(), 100) ;
         },
-        widescreenScroll2Top: function () {
-            GM_getValue('widescreenScroll2Top') === ON && this.isWidescreen() && this.scroll2Top();
+        setWidescreenPos: function () {
+            if (!this.isWidescreen()) {
+                return;
+            }
+            GM_getValue('widescreenScroll2Top') === ON ? this.scroll2Top() : GM_getValue('widescreenSetOnTop') === ON && this.playerSetOnTop();
         },
         scroll2Top: function () {
             window.scrollTo(0, 0);
         },
+        playerSetOnTop: function () {
+            window.scrollTo(0, q('.player').offsetTop());
+        },
         danmu: function (auto = false) {
-            const newDanmuBtn = q('.bilibili-player-video-danmaku-switch input');
-            const oldDanmuBtn = q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
-            if (newDanmuBtn[0]) {
-                newDanmuBtn.mouseover();
-                this.showInfoAnimate(q('.choose_danmaku').text(), auto);
+            if (this.isNew) {
+                const newDanmuBtn = q('.bilibili-player-video-danmaku-switch input').mouseover();
+                this.showHint(q('.choose_danmaku').text(), auto);
                 newDanmuBtn.click().mouseout();
             } else {
-                oldDanmuBtn.mouseover().click().mouseout();
+                const oldDanmuBtn = q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]').mouseover().click().mouseout();
                 const hint = `${oldDanmuBtn.attr('name').indexOf('close') > -1 ? "关闭" : '打开'}弹幕`;
-                this.showInfoAnimate(hint, auto);
+                this.showHint(hint, auto);
             }
         },
         danmuType: function (type) {
-            const newDanmuSetting = q('.bilibili-player-video-danmaku-setting');
-            const oldDanmuBtn = q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
-            const opt = oldDanmuBtn[0] ? oldDanmuBtn : newDanmuSetting;
-            const danmuOpt = opt.mouseover().mouseout().find(`div[ftype="${type}"]`);
+            const btn = this.isNew ? q('.bilibili-player-video-danmaku-setting') : q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
+            const danmuOpt = btn.mouseover().mouseout().find(`div[ftype="${type}"]`);
             if (danmuOpt) {
                 danmuOpt.click().mouseout();
                 if (danmuOpt.hasClass('disabled')) {
-                    this.showInfoAnimate(`关闭${danmuOpt.text()}`);
+                    this.showHint(`关闭${danmuOpt.text()}`);
                 } else {
-                    this.showInfoAnimate(`开启${danmuOpt.text()}`);
+                    this.showHint(`开启${danmuOpt.text()}`);
                 }
             }
         },
@@ -398,23 +417,20 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             this.danmuType('scroll');
         },
         danmuPrevent: function () {
-            const newDanmuSetting = q('.bilibili-player-video-danmaku-setting');
-            const oldDanmuBtn = q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
-            const el = oldDanmuBtn.mouseover().mouseout().find('input[name="ctlbar_danmuku_prevent"]').next()[0] ||
-                newDanmuSetting.mouseover().mouseout().find('.bilibili-player-video-danmaku-setting-left-preventshade-box input')[0];
-            const e = q(el).click().mouseout();
-            const text = e.text().length > 0 ? e.text() : e.next().text();
+            const e = this.isNew ? q('.bilibili-player-video-danmaku-setting').mouseover().mouseout().find('.bilibili-player-video-danmaku-setting-left-preventshade-box input') :
+                q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]').mouseover().mouseout().find('input[name="ctlbar_danmuku_prevent"]').next();
+            const text = e.click().mouseout().text().length > 0 ? e.text() : e.next().text();
             if (e.attr('data-pressed') === 'true' || e[0].checked) {
-                this.showInfoAnimate(`开启${text}`);
+                this.showHint(`开启${text}`);
             } else {
-                this.showInfoAnimate(`关闭${text}`);
+                this.showHint(`关闭${text}`);
             }
         },
         playAndPause: function () {
             q('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-start').click();
         },
         mirror: function () {
-            if (this.getTransformCss(this.h5Player[0]) != 'none') {
+            if (this.getTransformCss(this.h5Player) != 'none') {
                 this.setH5PlayerRransform('');
             } else {
                 this.setH5PlayerRransform('rotateY(180deg)');
@@ -440,7 +456,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         mute: function () {
             q('.bilibili-player-iconfont-volume').click();
-            this.h5Player[0].volume == 0 ? this.showInfoAnimate(`静音`) : this.showInfoAnimate(`取消静音`);
+            this.h5Player[0].volume == 0 ? this.showHint(`静音`) : this.showHint(`取消静音`);
         },
         jump: function () {
             q('.bilibili-player-video-toast-item-jump').click();
@@ -477,8 +493,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         autoHandlerForStage1: function () {
             if (GM_getValue('highQuality') === ON || GM_getValue('vipHighQuality') === ON) {
                 q('.bilibili-player-video-quality-menu').mouseover().mouseout();
-                let btn = q('.bui-select-item');
-                btn = !btn[0] ? q('.bpui-selectmenu-list-row') : btn;
+                const btn = this.isNew ? q('.bui-select-item') : q('.bpui-selectmenu-list-row');
                 const index = GM_getValue('highQuality') === ON ? btn.findIndex(e => !$(e).find('.bilibili-player-bigvip')[0]) : 0;
                 btn.click(index);
             }
@@ -488,11 +503,12 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             this.oldControlHide();
         },
         autoHandler: function () {
+            this.h5Player = q('#bofqi .bilibili-player-video video');
             if (GM_getValue('playAndPause') === ON) {
                 GM_getValue('playAndPause') === ON && this.h5Player[0].play();
             }
-            const isBangumi = window.location.href.indexOf('bangumi') >= 0;
-            if (GM_getValue('danmuOFF') === ON || isBangumi && GM_getValue('bangumiDanmuOFF') === ON) {
+            this.isBangumi = window.location.href.indexOf('bangumi') >= 0;
+            if (GM_getValue('danmuOFF') === ON || this.isBangumi && GM_getValue('bangumiDanmuOFF') === ON) {
                 let flag = q('.bilibili-player-video-danmaku-switch input').mouseover().mouseout();
                 flag = q('.choose_danmaku').text().indexOf('关闭') > -1 ||
                     !flag[0] && !q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku_close"]')[0];
@@ -518,28 +534,16 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             }
         },
         getNewPart: function (isNext) {
-            let newPart;
-            let cur = q('.episode-item.on')[0] || q('.item.on')[0] || q('#multi_page .cur-list ul li.on')[0];
-            if (cur) {
-                cur = q(cur);
-                if (isNext) {
-                    newPart = cur.next();
-                    if (!newPart[0]) {
-                        this.triggerSleep(q('#multi_page .paging li.on').next())
-                            .then(() => q('#multi_page .cur-list ul li a').click()).catch(() => {});
-                        return;
-                    }
-                } else {
-                    newPart = cur.prev();
-                    if (!newPart[0]) {
-                        this.triggerSleep(q('#multi_page .paging li.on').prev())
-                            .then(() => q('#multi_page .cur-list ul li a').last().click()).catch(() => {});
-                        return;
-                    }
-                }
+            const cur = this.isNew ? q('#multi_page .cur-list ul li.on') : this.isBangumi ? q('.episode-item.on') : q('.item.on');
+            if (!cur[0]) {
+                return;
+            }
+            const newPart = isNext ? cur.next() : cur.prev();
+            if (!newPart[0]) {
+                return;
             }
             const excludeClasses = ['v-part-toggle', 'btn-episode-more'];
-            return newPart && !excludeClasses.some(x => newPart[0].className.includes(x)) ? newPart : undefined;
+            return !excludeClasses.some(x => newPart[0].className.includes(x)) ? newPart : undefined;
         },
         partHandler: function (isNext) {
             const newPart = this.getNewPart(isNext);
@@ -547,11 +551,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 this.reload = GM_getValue('reloadPart') === ON;
                 if (!this.reload) {
                     const index = newPart.hasClass('episode-item') ? q('.episode-item').findIndex(e => e.className.indexOf('on') > 0)  : player.getPlaylistIndex();
-                    if (isNext) {
-                        player.next(index + 2);
-                    } else {
-                        player.next(index);
-                    }
+                    isNext ? player.next(index + 2) : player.next(index);
                 } else if (newPart[0].children && newPart[0].children.length) {
                     newPart[0].children[0].click();
                 } else {
@@ -596,8 +596,11 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 q('.bilibili-player-video-control').click();
             }).catch(() => {});
         },
+        hideOrShowSenderBar: function (status) {
+            this.hideSenderBar(status) || this.showSenderBar();
+        },
         hideSenderBar: function (flag = false) {
-            (flag || GM_getValue('hideSenderBar') === ON) && q('.bilibili-player-video-sendbar').css('opacity', 0).css('display', 'none');
+            return (flag || GM_getValue('hideSenderBar') === ON) && q('.bilibili-player-video-sendbar').css('opacity', 0).css('display', 'none')[0];
         },
         showSenderBar: function () {
             q('.bilibili-player-video-sendbar').css('opacity', 1).css('display', 'flex');
@@ -606,10 +609,10 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             return q('.icon-24repeaton').length || this.isNew && !q('.bilibili-player-video-btn-repeat.closed').length;
         },
         oldControlShow: function() {
-            return this.isFullScreen() && !this.isNew && q('.bilibili-player-video-control').css('opacity', 1);
+            return !this.isNew && this.isFullScreen() && q('.bilibili-player-video-control').css('opacity', 1);
         },
         oldControlHide: function() {
-            return this.isFullScreen() && !this.isNew && q('.bilibili-player-video-control').css('opacity', 0);
+            return !this.isNew && this.isFullScreen() && q('.bilibili-player-video-control').css('opacity', 0);
         },
         newControlShow: function() {
             q('.bilibili-player-area').addClass('video-control-show');
@@ -645,13 +648,14 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 matrix = matrix[1].split(',');
                 if (matrix) {
                     const rad = Math.atan2(matrix[1], matrix[0]);
-                    return parseFloat((rad * 180 / Math.PI).toFixed(1));
+                    return (rad * 180 / Math.PI) | 0;
                 }
             }
             return 0;
         },
-        addStyle: function (cssArr) {
-            q('head').append(`<style type="text/css">${cssArr.join('')}</style>`);
+        addStyle: function (css, id) {
+            id = id ? `id=${id}` : '';
+            q('head').append(`<style ${id} type="text/css">${css}</style>`);
         },
         initSettingHTML: function () {
             this.isNew = q('.bilibili-player-video-btn-setting').mouseover()[0];
@@ -686,7 +690,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 panel = q(`#quick-do-${configName}-panel`);
                 q(`#quick-do-${configName}-btn`).on('click', () => panel.getCss('display') == 'none' ? panel.css('display', 'block') : panel.css('display', 'none'));
             }
-            for (let [key, { text, status, ban }] of Object.entries(options)) {
+            for (let [key, { text, status, ban, fn }] of Object.entries(options)) {
                 const checkboxId = `cb-${key}`;
                 panel.append(this.isNew ? this.getNewSettingHTML(checkboxId, text) : this.getSettingHTML(checkboxId, text));
                 if (GM_getValue(key) === undefined) {
@@ -700,7 +704,9 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                     GM_setValue(key, gmvalue);
                     gmvalue === ON && ban.forEach((k,i) => GM_getValue(k) === ON && q(`#cb-${k}`).click());
                     !this.isNew && checkbox.next().toggleClass('bpui-state-active', gmvalue === ON);
+                    fn && this[fn](gmvalue === ON);
                 });
+                fn && this[fn](checked);
             }
         },
         getSettingHTML: function (checkboxId, text) {
@@ -788,25 +794,25 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         checkHint: function (auto = false) {
             return auto ? GM_getValue('autoHint') === ON : GM_getValue('hint') === ON;
         },
-        showInfoAnimate: function (info, auto = false) {
+        showHint: function (info, auto = false) {
             if (!this.checkHint(auto)) {
                 return;
             }
-            clearTimeout(this.infoAnimateTimer);
+            clearTimeout(this.hintTimer);
             q('div.bilibili-player-infoHint').css('opacity', 1).css('display', 'block');
             q('span.bilibili-player-infoHint-text')[0].innerHTML = info;
-            this.infoAnimateTimer = setTimeout(() => q('div.bilibili-player-infoHint').css('opacity', 0).css('display', 'none'), 1E3);
+            this.hintTimer = setTimeout(() => q('div.bilibili-player-infoHint').css('opacity', 0).css('display', 'none'), 1E3);
         },
-        danmuDIY: function (danmu) {
-            // 挖了一个坑
-            if (danmu && danmu[0]) {
-                if (GM_getValue('danmuColor') === ON ) {
-                    const danmuColor = q('.bui-color-picker-option-active').getCss('background-color') || 'rgb(255, 255, 255)';
-                    danmu.css('color',danmuColor);
-                }
+        initDanmuStyle: function (status) {
+            if (status) {
+                const css = '.bilibili-danmaku{color:rgb(255, 255, 255)!important;}';
+                this.addStyle(css, 'qd-danmuColor');
+            } else {
+                const styleNode = q('#qd-danmuColor')[0];
+                styleNode && styleNode.parentNode.removeChild(styleNode);
             }
         },
-        handerVideoEnded: function () {
+        videoEndedHander: function () {
             if (GM_getValue('autoJumpContent') === ON) {
                 setTimeout(() => this.jumpContent(), 0);
             }
@@ -826,14 +832,12 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             let stageFlag = undefined;
             new MutationObserver((mutations, observer) => {
                 mutations.forEach(mutation => {
-                    let danmu;
                     const target = q(mutation.target);
                     const stage = mutation.previousSibling && target.attr('stage');
                     if ((stage === "0" || stage === "2") && (!stageFlag || stage === stageFlag)) {
                         stageFlag = stage;
                         try {
-                            this.h5Player = q('#bofqi .bilibili-player-video video');
-                            this.initInfoStyle();
+                            this.initHintStyle();
                             this.initSettingHTML();
                             this.autoHandler();
                             this.bindKeydown();
@@ -847,12 +851,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         console.log('bilibili-quickdo init done');
                     } else if (target.hasClass('bilibili-player-video')) {
                         this.h5Player = q('#bofqi .bilibili-player-video video');
-                    } else if (target.hasClass('bilibili-player-video-danmaku')) {
-                        danmu = q(mutation.addedNodes[0] || mutation.nextSibling || mutation.removedNodes || mutation.previousSibling);
-                    }  else if (target.hasClass('bilibili-danmaku') && mutation.addedNodes.length > 0) {
-                        danmu = target;
                     }
-                    this.danmuDIY(danmu);
                 });
             }).observe(document.body, {
                 childList: true,
