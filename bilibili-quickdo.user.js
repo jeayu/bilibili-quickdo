@@ -497,7 +497,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 const index = GM_getValue('highQuality') === ON ? btn.findIndex(e => !$(e).find('.bilibili-player-bigvip')[0]) : 0;
                 btn.click(index);
             }
-            if (GM_getValue('jump') === ON) {
+            if (this.reload && GM_getValue('jump') === ON) {
                 this.jump();
             }
             this.oldControlHide();
@@ -514,6 +514,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                     !flag[0] && !q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku_close"]')[0];
                 flag && this.danmu(true);
             }
+            q('.bilibili-player-ending-panel').css('display', 'none');
             this.autoHandlerForReload();
             this.oldControlHide();
             this.hideSenderBar();
