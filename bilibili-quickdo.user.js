@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.8.6
+// @version      0.9.8.7
 // @description  快捷键设置,回车快速发弹幕,双击全屏,自动选择最高清画质、播放、全屏、关闭弹幕、自动转跳和自动关灯等
 // @author       jeayu
 // @license      MIT
@@ -189,6 +189,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             'up': 38,
             'right': 39,
             'down': 40,
+            'space': 32,
             '[': 219,
             ']': 221,
             '\\': 220,
@@ -232,21 +233,22 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                     options: {
                         dblclick: { text: '双击全屏', status: ON, ban:[] },
                         hint: { text: '快捷键提示', status: ON, ban:[] },
-                        autoHint: { text: '自动操作提示', status: ON, ban:[] },
-                        reloadPart: { text: '换P重新加载', status: OFF, ban:[] },
+                        autoHint: { text: '自动操作提示', status: ON, ban:[], tips: '自动关闭弹幕时的提示' },
+                        reloadPart: { text: '换P重新加载', status: OFF, ban:[], tips: '脚本已自动下一P.</br>勾选: 屏幕回到自动设置的模式.</br>不勾选: 屏幕和上一P一样,</br>番剧下一P不是续集换P会无效.' },
                         danmuColor: { text: '统一弹幕颜色', status: OFF, ban:[], fn: 'initDanmuStyle' },
-                        hideSenderBar: { text: '隐藏弹幕栏', status: OFF, ban:[], fn: 'hideOrShowSenderBar' },
-                        widescreenScroll2Top: { text: '宽屏回到顶部', status: OFF, ban:['widescreenSetOnTop'], fn: 'setWidescreenPos' },
-                        widescreenSetOnTop: { text: '宽屏置顶', status: OFF, ban:['widescreenScroll2Top'], fn: 'setWidescreenPos' },
+                        hideSenderBar: { text: '隐藏弹幕栏', status: OFF, ban:[], fn: 'hideOrShowSenderBar', tips: '发弹幕快捷键可显示' },
+                        widescreenScroll2Top: { text: '宽屏时回到顶部', status: OFF, ban:['widescreenSetOnTop'], fn: 'setWidescreenPos' },
+                        widescreenSetOnTop: { text: '宽屏时播放器置顶部', status: OFF, ban:['widescreenScroll2Top'], fn: 'setWidescreenPos' },
+                        globalHotKey: { text: '默认快捷键设置全局', status: OFF, ban:[], tips: '上下左右空格不会滚动页面' },
                     },
                     btn: '常规设置',
                 },
                 startCheckbox: {
                     options: {
                         playAndPause: { text: '自动播放', status: ON, ban:[] },
-                        jump: { text: '自动转跳', status: ON, ban:[] },
+                        jump: { text: '自动转跳', status: ON, ban:[], tips: '跳转另一集无效, 配合跳转快捷键用'},
                         lightOff: { text: '自动关灯', status: OFF, ban:[] },
-                        fullscreen: { text: '自动全屏', status: OFF, ban:['webFullscreen', 'widescreen'] },
+                        fullscreen: { text: '自动全屏', status: OFF, ban:['webFullscreen', 'widescreen'], tips: '浏览器限制不能真全屏' },
                         webFullscreen: { text: '自动网页全屏', status: ON, ban:['fullscreen', 'widescreen'] },
                         widescreen: { text: '自动宽屏', status: OFF, ban:['webFullscreen', 'fullscreen'] },
                         danmuOFF: { text: '自动关闭弹幕', status: OFF, ban:[] },
@@ -258,9 +260,9 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 },
                 endCheckbox: {
                     options: {
-                        lightOn: { text: '播放结束自动开灯', status: OFF, ban:[] },
-                        exitScreen: { text: '播放结束还原屏幕', status: OFF, ban:['exit2WideScreen'] },
-                        exit2WideScreen: { text: '播放结束还原宽屏', status: OFF, ban:['exitScreen'] },
+                        lightOn: { text: '播放结束自动开灯', status: OFF, ban:[], tips: '还有下一P不触发' },
+                        exitScreen: { text: '播放结束还原屏幕', status: OFF, ban:['exit2WideScreen'], tips: '还有下一P不触发' },
+                        exit2WideScreen: { text: '播放结束还原宽屏', status: OFF, ban:['exitScreen'], tips: '还有下一P不触发' },
                         autoJumpContent: { text: '跳过充电鸣谢', status: OFF, ban:[] },
                     },
                     btn: '播放结束自动设置',
@@ -271,7 +273,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             player.addEventListener('dblclick', () => GM_getValue('dblclick') === ON && this.fullscreen());
             player.addEventListener('video_resize', () => {
                 this.hideSenderBar();
-                this.isWidescreen && (!this.isNew || !q('.mini-player')[0]) && this.setWidescreenPos();
+                this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos();
             });
             player.addEventListener('video_media_ended', () => this.videoEndedHander());
         },
@@ -382,7 +384,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             window.scrollTo(0, 0);
         },
         playerSetOnTop: function () {
-            window.scrollTo(0, q('.player').offsetTop());
+            const pos = this.isNew || !q('.mini-player')[0] ? q('.player').offsetTop() : q('.player-fix').offsetTop();
+            window.scrollTo(0, pos);
         },
         danmu: function (auto = false) {
             if (this.isNew) {
@@ -479,10 +482,20 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         prevPart: function () {
             this.partHandler(false);
         },
+        focusPlayer: function () {
+            q('.bilibili-player-video-control').click();
+        },
         keyHandler: function (e) {
             const {keyCode, ctrlKey, shiftKey, altKey} = e;
             if (ctrlKey || shiftKey || altKey) {
                 return;
+            }
+            if (GM_getValue('globalHotKey') === ON) {
+                const {left, up, right, down, space} = this.keyCode;
+                if ([left, up, right, down, space].some(kc => kc === keyCode)) {
+                    this.focusPlayer();
+                    return;
+                }
             }
             Object.keys(this.config.quickDo)
                 .some(key => keyCode === this.getKeyCode(key) && (!this[key]() || !e.preventDefault())) ||
@@ -594,7 +607,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             this.triggerSleep(danmuInput, 'mouseout').then(() => {
                 !this.isNew && this.isFullScreen() ? this.hideSenderBar(true) : this.newControlHide();
                 danmuInput.blur();
-                q('.bilibili-player-video-control').click();
+                this.focusPlayer();
             }).catch(() => {});
         },
         hideOrShowSenderBar: function (status) {
@@ -691,29 +704,40 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 panel = q(`#quick-do-${configName}-panel`);
                 q(`#quick-do-${configName}-btn`).on('click', () => panel.getCss('display') == 'none' ? panel.css('display', 'block') : panel.css('display', 'none'));
             }
-            for (let [key, { text, status, ban, fn }] of Object.entries(options)) {
+            for (let [key, { text, status, ban, fn, tips }] of Object.entries(options)) {
                 const checkboxId = `cb-${key}`;
-                panel.append(this.isNew ? this.getNewSettingHTML(checkboxId, text) : this.getSettingHTML(checkboxId, text));
+                panel.append(this.isNew ? this.getNewSettingHTML(checkboxId, text, tips) : this.getSettingHTML(checkboxId, text, tips));
                 if (GM_getValue(key) === undefined) {
                     GM_setValue(key, status);
                 }
                 const checked = GM_getValue(key) === ON;
                 const checkbox = q(`#${checkboxId}`);
-                checked && this.isNew ? checkbox.click() : checkbox.next().toggleClass('bpui-state-active', checked);
+                checked && this.isNew ? checkbox.click() : q(`#${checkboxId}-lable`).toggleClass('bpui-state-active', checked);
                 checkbox.on('click', () => {
                     const gmvalue = GM_getValue(key) === ON ? OFF : ON;
                     GM_setValue(key, gmvalue);
                     gmvalue === ON && ban.forEach((k,i) => GM_getValue(k) === ON && q(`#cb-${k}`).click());
-                    !this.isNew && checkbox.next().toggleClass('bpui-state-active', gmvalue === ON);
+                    !this.isNew && q(`#${checkboxId}-lable`).toggleClass('bpui-state-active', gmvalue === ON);
                     fn && this[fn](gmvalue === ON);
                 });
                 fn && this[fn](checked);
+                if (tips) {
+                    const tipsNode = q(`#${checkboxId}-tips`);
+                    let tipsTimer;
+                    checkbox.on('mouseover', () => tipsTimer = setTimeout(() => tipsNode.css('display', 'block'), 300))
+                        .on('mouseout', () => {
+                            clearTimeout(tipsTimer);
+                            tipsNode.css('display', 'none')
+                        });
+                }
             }
         },
-        getSettingHTML: function (checkboxId, text) {
+        getSettingHTML: function (checkboxId, text, tips) {
+            tips = tips ? `<div id="${checkboxId}-tips" style="display: none;background: rgba(0, 0, 0, 0.7);color: white;border-radius: 5px;padding: 0px 20px;">${tips}</div>` : '';
             return `
-            <div style="display: inline-block;width: 100%;float: left;">
-                <input type="checkbox" id="${checkboxId}" class="bpui-component bpui-checkbox bpui-button">
+            <div id="${checkboxId}" style="display: inline-block;width: 100%;float: left;">
+                ${tips}
+                <input type="checkbox" class="bpui-component bpui-checkbox bpui-button">
                 <label for="${checkboxId}" id="${checkboxId}-lable" class="button bpui-button-text-only" role="button" data-pressed="false">
                     <span class="bpui-button-text">
                     <i class="bpui-icon-checkbox bilibili-player-iconfont-checkbox icon-12checkbox"></i>
@@ -724,9 +748,11 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 </label>
             </div>`;
         },
-        getNewSettingHTML: function (checkboxId, text) {
+        getNewSettingHTML: function (checkboxId, text, tips) {
+            tips = tips ? `<div id="${checkboxId}-tips" style="display: none;background: rgba(0, 0, 0, 0.7);border-radius: 5px;padding: 0px 20px;">${tips}</div>` : '';
             return `
             <div class="bilibili-player-video-btn-setting-panel-others-content" style="width: 100%;float: left;">
+                ${tips}
                 <div class="bilibili-player-fl bui bui-checkbox bui-dark">
                     <input id="${checkboxId}" class="bui-checkbox-input" type="checkbox">
                     <label class="bui-checkbox-label">
