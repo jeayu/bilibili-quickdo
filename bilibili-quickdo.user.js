@@ -273,7 +273,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             player.addEventListener('dblclick', () => GM_getValue('dblclick') === ON && this.fullscreen());
             player.addEventListener('video_resize', () => {
                 this.hideSenderBar();
-                this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos();
+                setTimeout(() => this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos(), this.isNew ? 0 : 100);
             });
             player.addEventListener('video_media_ended', () => this.videoEndedHander());
         },
