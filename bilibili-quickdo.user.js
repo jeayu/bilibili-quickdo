@@ -142,6 +142,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         reload: true,
         isNew: false,
         isBangumi: false,
+        repeatStart: undefined,
+        repeatEnd: undefined,
         keyCode: {
             'enter': 13,
             'esc': 27,
@@ -227,6 +229,9 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 scroll2Top: { value: '', text: '回到顶部', },
                 jumpContent: { value: '', text: '跳过鸣谢', },
                 playerSetOnTop: { value: '', text: '播放器置顶', },
+                setRepeatStart: { value: '', text: '循环起点', },
+                setRepeatEnd: { value: '', text: '循环终点', },
+                resetRepeat: { value: '', text: '清除循环点', },
             },
             checkboxes: {
                 checkbox: {
@@ -484,6 +489,19 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         focusPlayer: function () {
             q('.bilibili-player-video-control').click();
+        },
+        setRepeatStart: function () {
+            this.repeatStart = this.h5Player[0].currentTime;
+            this.showHint(`循环起点 ${q('.bilibili-player-video-time-now').text()}`)
+        },
+        setRepeatEnd: function () {
+            this.repeatEnd = this.h5Player[0].currentTime;
+            this.showHint(`循环终点 ${q('.bilibili-player-video-time-now').text()}`)
+        },
+        resetRepeat: function () {
+            this.repeatEnd = undefined;
+            this.repeatStart = undefined;
+            this.showHint(`清除循环点`)
         },
         keyHandler: function (e) {
             const {keyCode, ctrlKey, shiftKey, altKey} = e;
@@ -840,6 +858,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             }
         },
         videoEndedHander: function () {
+            this.repeatEnd = this.repeatStart = undefined;
             if (GM_getValue('autoJumpContent') === ON) {
                 setTimeout(() => this.jumpContent(), 0);
             }
@@ -878,6 +897,9 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         console.log('bilibili-quickdo init done');
                     } else if (target.hasClass('bilibili-player-video')) {
                         this.h5Player = q('#bofqi .bilibili-player-video video');
+                    } else if (this.repeatEnd && this.repeatStart && target.hasClass('bilibili-player-video-time-now')
+                               && this.repeatEnd <= this.h5Player[0].currentTime) {
+                        this.h5Player[0].currentTime = this.repeatStart;
                     }
                 });
             }).observe(document.body, {
