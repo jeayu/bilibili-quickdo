@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.8.7
+// @version      0.9.8.8
 // @description  快捷键设置,回车快速发弹幕,双击全屏,自动选择最高清画质、播放、全屏、关闭弹幕、自动转跳和自动关灯等
 // @author       jeayu
 // @license      MIT
@@ -245,6 +245,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         widescreenScroll2Top: { text: '宽屏时回到顶部', status: OFF, ban:['widescreenSetOnTop'], fn: 'setWidescreenPos' },
                         widescreenSetOnTop: { text: '宽屏时播放器置顶部', status: OFF, ban:['widescreenScroll2Top'], fn: 'setWidescreenPos' },
                         globalHotKey: { text: '默认快捷键设置全局', status: OFF, ban:[], tips: '上下左右空格不会滚动页面' },
+                        lightOffWhenPlaying: { text: '播放时自动关灯', status: OFF, ban:[], },
+                        lightOnWhenPause: { text: '暂停时自动开灯', status: OFF, ban:[], },
                     },
                     btn: '常规设置',
                 },
@@ -281,6 +283,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 setTimeout(() => this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos(), this.isNew ? 0 : 100);
             });
             player.addEventListener('video_media_ended', () => this.videoEndedHander());
+            player.addEventListener('video_media_playing', () => GM_getValue('lightOffWhenPlaying') === ON && !this.isLightOff() && this.lightOff());
+            player.addEventListener('video_media_pause', () => GM_getValue('lightOnWhenPause') === ON && this.isLightOff() && this.lightOff());
         },
         initHintStyle: function () {
             if (q('.bilibili-player-infoHint')[0]) {
@@ -444,16 +448,19 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 this.setH5PlayerRransform('rotateY(180deg)');
             }
         },
+        isLightOff: function () {
+            return q('#heimu').getCss('display') === 'block';
+        },
         lightOff: function () {
             if (!q('.bilibili-player-video-btn-setting-panel-others-content-lightoff input').click()[0]) {
                 if (!q('#heimu').getCss('display')) {
                     q('body').append('<div id="heimu" style="display: block;"></div>');
-                } else if (q('#heimu').getCss('display') === 'block') {
+                } else if (this.isLightOff()) {
                     q('#heimu').css('display', '')
                 } else {
                     q('#heimu').css('display', 'block')
                 }
-                q('#bilibiliPlayer').toggleClass('mode-light-off', q('#heimu').getCss('display') === 'block');
+                q('#bilibiliPlayer').toggleClass('mode-light-off', this.isLightOff());
             }
         },
         seek: function () {
@@ -492,15 +499,14 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         setRepeatStart: function () {
             this.repeatStart = this.h5Player[0].currentTime;
-            this.showHint(`循环起点 ${q('.bilibili-player-video-time-now').text()}`)
+            this.showHint(`起点 ${q('.bilibili-player-video-time-now').text()}`)
         },
         setRepeatEnd: function () {
             this.repeatEnd = this.h5Player[0].currentTime;
-            this.showHint(`循环终点 ${q('.bilibili-player-video-time-now').text()}`)
+            this.showHint(`终点 ${q('.bilibili-player-video-time-now').text()}`)
         },
         resetRepeat: function () {
-            this.repeatEnd = undefined;
-            this.repeatStart = undefined;
+            this.repeatEnd = this.repeatStart = undefined;
             this.showHint(`清除循环点`)
         },
         keyHandler: function (e) {
@@ -554,7 +560,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             if (!this.reload) {
                 return;
             }
-            if (GM_getValue('lightOff') === ON && q('#heimu').getCss('display') !== 'block') {
+            if (GM_getValue('lightOff') === ON && !this.isLightOff()) {
                 this.lightOff();
             }
             if (GM_getValue('fullscreen') === ON && !this.isFullScreen()) {
@@ -865,7 +871,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             if (this.isRepeatPlay() || this.partHandler(true)) {
                 return;
             }
-            if (GM_getValue('lightOn') === ON && q('#heimu').getCss('display') === 'block') {
+            if (GM_getValue('lightOn') === ON && this.isLightOff()) {
                 this.lightOff();
             }
             if (GM_getValue('exitScreen') === ON) {
