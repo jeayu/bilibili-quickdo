@@ -147,10 +147,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         keyCode: {
             'enter': 13,
             'esc': 27,
-            '=+': 187,
-            '-_': 189,
-            '+': 107,
-            '-': 109,
+            '=': 187,
+            '-': 189,
             '0': 48,
             '1': 49,
             '2': 50,
@@ -816,7 +814,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 input.on('keydown', e => {
                     const key = e.key.toLowerCase();
                     const isA2Z = e.keyCode >= 65 && e.keyCode <= 90;
-                    const isSymbol = "[]\\;',./".indexOf(key) > -1;
+                    const isSymbol = "[]\\;',./-=".indexOf(key) > -1;
                     if ((isA2Z || isSymbol || e.keyCode === this.keyCode.enter) && this.keyCode[key]) {
                         input.val(key)
                     }
