@@ -245,6 +245,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         globalHotKey: { text: '默认快捷键设置全局', status: OFF, ban:[], tips: '上下左右空格不会滚动页面' },
                         lightOffWhenPlaying: { text: '播放时自动关灯', status: OFF, ban:[], },
                         lightOnWhenPause: { text: '暂停时自动开灯', status: OFF, ban:[], },
+                        ultraWidescreen: { text: '超宽屏', status: OFF, ban:[], fn: 'ultraWidescreen', tips: '宽屏模式宽度拉长'},
                     },
                     btn: '常规设置',
                 },
@@ -279,10 +280,23 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             player.addEventListener('video_resize', () => {
                 this.hideSenderBar();
                 setTimeout(() => this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos(), this.isNew ? 0 : 100);
+                this.ultraWidescreen();
             });
             player.addEventListener('video_media_ended', () => this.videoEndedHander());
             player.addEventListener('video_media_playing', () => GM_getValue('lightOffWhenPlaying') === ON && !this.isLightOff() && this.lightOff());
             player.addEventListener('video_media_pause', () => GM_getValue('lightOnWhenPause') === ON && this.isLightOff() && this.lightOff());
+        },
+        ultraWidescreen: function () {
+            const styleNode = q('#qd-ultraWidescreen')[0];
+            styleNode && styleNode.parentNode.removeChild(styleNode);
+            if (GM_getValue('ultraWidescreen') === ON && !q('.mini-player')[0]) {
+                const marginLeft = this.isNew ? `-${q('.v-wrap').getCss('margin-left')}` : `-${q('#__bofqi').getCss('margin-left')}`;
+                const css = `
+                .mode-widescreen{width:${window.innerWidth-18}px!important;margin-left:${marginLeft}!important}
+                ${this.isNew ? '.guide{z-index:0!important}' : ''}
+                `;
+                this.addStyle(css, 'qd-ultraWidescreen');
+            }
         },
         initHintStyle: function () {
             if (q('.bilibili-player-infoHint')[0]) {
@@ -379,7 +393,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         playerMode: function (mode) {
             player.mode(mode);
-            mode === WIDESCREEN && setTimeout(() => this.setWidescreenPos(), 100) ;
+            mode === WIDESCREEN && setTimeout(() => this.setWidescreenPos(), 100);
         },
         setWidescreenPos: function () {
             if (!this.isWidescreen()) {
@@ -568,6 +582,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             } else if (GM_getValue('widescreen') === ON) {
                 this.playerMode(WIDESCREEN);
             }
+            this.ultraWidescreen();
         },
         getNewPart: function (isNext) {
             const cur = this.isNew ? q('#multi_page .cur-list ul li.on') : this.isBangumi ? q('.episode-item.on') : q('.item.on');
@@ -853,12 +868,12 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             this.hintTimer = setTimeout(() => q('div.bilibili-player-infoHint').css('opacity', 0).css('display', 'none'), 1E3);
         },
         initDanmuStyle: function (status) {
-            if (status) {
+            const styleNode = q('#qd-danmuColor')[0];
+            if (!status) {
+                styleNode && styleNode.parentNode.removeChild(styleNode);
+            } else if (!styleNode) {
                 const css = '.bilibili-danmaku{color:rgb(255, 255, 255)!important;}';
                 this.addStyle(css, 'qd-danmuColor');
-            } else {
-                const styleNode = q('#qd-danmuColor')[0];
-                styleNode && styleNode.parentNode.removeChild(styleNode);
             }
         },
         videoEndedHander: function () {
