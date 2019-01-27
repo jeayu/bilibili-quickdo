@@ -293,10 +293,11 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             const styleNode = q('#qd-ultraWidescreen')[0];
             styleNode && styleNode.parentNode.removeChild(styleNode);
             if (GM_getValue('ultraWidescreen') === ON && !q('.mini-player')[0]) {
-                const marginLeft = this.isNew ? `-${q('.v-wrap').getCss('margin-left')}` : `-${q('#__bofqi').getCss('margin-left')}`;
+                const marginLeft = (this.isNew ? q('.v-wrap') : this.isBangumi ? q('.bangumi-player') : q('#__bofqi')).getCss('margin-left');
                 const css = `
-                .mode-widescreen{width:${document.body.clientWidth}px!important;margin-left:${marginLeft}!important}
+                .mode-widescreen{width:${document.body.clientWidth}px!important;margin-left:-${marginLeft}!important}
                 ${this.isNew ? '.guide{z-index:0!important}' : ''}
+                ${this.isBangumi ? '.bangumi-nav-right{z-index:0!important}' : ''}
                 `;
                 this.addStyle(css, 'qd-ultraWidescreen');
             }
@@ -305,9 +306,10 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             const styleNode = q('#qd-maxPlayerHeight')[0];
             styleNode && styleNode.parentNode.removeChild(styleNode);
             if (GM_getValue('maxPlayerHeight') === ON && !q('.mini-player')[0]) {
-                const marginHeight = document.body.clientHeight - (parseFloat(q('.player-wrap').getCss('height')) || 0);
+                const marginHeight = document.body.clientHeight - (parseFloat(q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).getCss('height')) || 0);
                 const css = `
                 .player{height:${window.innerHeight}px!important}
+                ${this.isBangumi ? `#bangumi_player{height:${window.innerHeight}px}` : ''}
                 ${this.isNew ? `.player-wrap{margin-bottom: ${marginHeight + (parseFloat(q('#arc_toolbar_report').getCss('margin-top')) || 0)}px!important}` : ''}
                 ${this.isNew && this.isWidescreen() ? `.r-con{margin-top: ${marginHeight}px!important}` : ''}
                 `;
@@ -572,7 +574,6 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             if (GM_getValue('playAndPause') === ON) {
                 GM_getValue('playAndPause') === ON && this.h5Player[0].play();
             }
-            this.isBangumi = window.location.href.indexOf('bangumi') >= 0;
             if (GM_getValue('danmuOFF') === ON || this.isBangumi && GM_getValue('bangumiDanmuOFF') === ON) {
                 let flag = q('.bilibili-player-video-danmaku-switch input').mouseover().mouseout();
                 flag = q('.choose_danmaku').text().indexOf('关闭') > -1 ||
@@ -725,6 +726,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         initSettingHTML: function () {
             this.isNew = q('.bilibili-player-video-btn-setting').mouseover()[0];
+            this.isBangumi = window.location.href.indexOf('bangumi') >= 0;
             let panel = q('.bilibili-player-video-btn-setting-panel-panel-others');
             if (!this.isNew) {
                 q('.bilibili-player-video-btn-quality').append(`
