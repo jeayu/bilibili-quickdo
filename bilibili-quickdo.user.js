@@ -144,6 +144,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         isBangumi: false,
         repeatStart: undefined,
         repeatEnd: undefined,
+        playerOffsetTop: 0,
         keyCode: {
             'enter': 13,
             'esc': 27,
@@ -245,7 +246,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                         globalHotKey: { text: '默认快捷键设置全局', status: OFF, ban:[], tips: '上下左右空格不会滚动页面' },
                         lightOffWhenPlaying: { text: '播放时自动关灯', status: OFF, ban:[], },
                         lightOnWhenPause: { text: '暂停时自动开灯', status: OFF, ban:[], },
-                        ultraWidescreen: { text: '超宽屏', status: OFF, ban:[], fn: 'ultraWidescreen', tips: '宽屏模式宽度拉长'},
+                        ultraWidescreen: { text: '超宽屏', status: OFF, ban:[], fn: 'ultraWidescreen', tips: '宽屏模式宽度和窗口一样'},
+                        maxPlayerHeight: { text: '播放器高度和窗口一样', status: OFF, ban:[], fn: 'maxPlayerHeight'},
                     },
                     btn: '常规设置',
                 },
@@ -281,6 +283,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 this.hideSenderBar();
                 setTimeout(() => this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos(), this.isNew ? 0 : 100);
                 this.ultraWidescreen();
+                this.maxPlayerHeight();
             });
             player.addEventListener('video_media_ended', () => this.videoEndedHander());
             player.addEventListener('video_media_playing', () => GM_getValue('lightOffWhenPlaying') === ON && !this.isLightOff() && this.lightOff());
@@ -292,10 +295,23 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             if (GM_getValue('ultraWidescreen') === ON && !q('.mini-player')[0]) {
                 const marginLeft = this.isNew ? `-${q('.v-wrap').getCss('margin-left')}` : `-${q('#__bofqi').getCss('margin-left')}`;
                 const css = `
-                .mode-widescreen{width:${window.innerWidth-18}px!important;margin-left:${marginLeft}!important}
+                .mode-widescreen{width:${document.body.clientWidth}px!important;margin-left:${marginLeft}!important}
                 ${this.isNew ? '.guide{z-index:0!important}' : ''}
                 `;
                 this.addStyle(css, 'qd-ultraWidescreen');
+            }
+        },
+        maxPlayerHeight: function () {
+            const styleNode = q('#qd-maxPlayerHeight')[0];
+            styleNode && styleNode.parentNode.removeChild(styleNode);
+            if (GM_getValue('maxPlayerHeight') === ON && !q('.mini-player')[0]) {
+                const marginHeight = document.body.clientHeight - (parseFloat(q('.player-wrap').getCss('height')) || 0);
+                const css = `
+                .player{height:${window.innerHeight}px!important}
+                ${this.isNew ? `.player-wrap{margin-bottom: ${marginHeight + (parseFloat(q('#arc_toolbar_report').getCss('margin-top')) || 0)}px!important}` : ''}
+                ${this.isNew && this.isWidescreen() ? `.r-con{margin-top: ${marginHeight}px!important}` : ''}
+                `;
+                this.addStyle(css, 'qd-maxPlayerHeight');
             }
         },
         initHintStyle: function () {
@@ -405,8 +421,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             window.scrollTo(0, 0);
         },
         playerSetOnTop: function () {
-            const pos = this.isNew || !q('.mini-player')[0] ? q('.player').offsetTop() : q('.player-fix').offsetTop();
-            window.scrollTo(0, pos);
+            window.scrollTo(0, this.playerOffsetTop);
         },
         danmu: function (auto = false) {
             if (this.isNew) {
@@ -553,6 +568,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         autoHandler: function () {
             this.h5Player = q('#bofqi .bilibili-player-video video');
+            this.playerOffsetTop = this.isNew ? this.h5Player.offsetTop() : q('.player').offsetTop();
             if (GM_getValue('playAndPause') === ON) {
                 GM_getValue('playAndPause') === ON && this.h5Player[0].play();
             }
@@ -582,7 +598,6 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             } else if (GM_getValue('widescreen') === ON) {
                 this.playerMode(WIDESCREEN);
             }
-            this.ultraWidescreen();
         },
         getNewPart: function (isNext) {
             const cur = this.isNew ? q('#multi_page .cur-list ul li.on') : this.isBangumi ? q('.episode-item.on') : q('.item.on');
