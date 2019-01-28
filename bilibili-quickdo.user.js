@@ -566,7 +566,7 @@ v0.9.9 更新：
             this.showHint(`音量 ${this.h5Player[0].volume * 100 | 0}%`)
         },
         subProgress: function () {
-            this.h5Player[0].currentTime += this.getVarSetting('videoProgress');
+            this.h5Player[0].currentTime -= this.getVarSetting('videoProgress');
         },
         addProgress: function () {
             this.h5Player[0].currentTime += this.getVarSetting('videoProgress');
