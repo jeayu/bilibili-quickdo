@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.8.9
+// @version      0.9.9
 // @description  快捷键设置,回车快速发弹幕,双击全屏,自动选择最高清画质、播放、全屏、关闭弹幕、自动转跳和自动关灯等
 // @author       jeayu
 // @license      MIT
@@ -14,11 +14,8 @@
 // ==/UserScript==
 
 /*
-v0.9.8 更新：
-更新快捷键设置页面
-
-历史更新：
-https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
+v0.9.9 更新：
+变量设置页面
  */
 
 (function () {
@@ -26,18 +23,11 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
     const q = function (selector) {
         let nodes = [];
         if (typeof selector === 'string') {
-            const elements = document.querySelectorAll(selector)
-            for (let i = 0; i < elements.length; i++) {
-                nodes[i] = elements[i];
-            }
-            nodes.length = elements.length;
+            Object.assign(nodes, document.querySelectorAll(selector));
             nodes.selectorStr = selector;
         } else if (selector instanceof Node) {
-            nodes = {
-                0: selector,
-                length: 1,
-                selectorStr: '',
-            }
+            nodes = [selector];
+            nodes.selectorStr = '';
         }
         nodes.click = function (index = 0) {
             nodes.length > index && nodes[index].click();
@@ -85,10 +75,10 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             return flag ? this.addClass(className, index) : this.removeClass(className, index);
         }
         nodes.next = function (index = 0) {
-            return nodes.length > index && nodes[index].nextElementSibling ? q(nodes[index].nextElementSibling) : {0: undefined};
+            return nodes.length > index && nodes[index].nextElementSibling ? q(nodes[index].nextElementSibling) : [undefined];
         }
         nodes.prev = function (index = 0) {
-            return nodes.length > index && nodes[index].previousElementSibling ? q(nodes[index].previousElementSibling) : {0: undefined};
+            return nodes.length > index && nodes[index].previousElementSibling ? q(nodes[index].previousElementSibling) : [undefined];
         }
         nodes.trigger = function (event, index = 0) {
             if (nodes.length > index) {
@@ -205,13 +195,13 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 fullscreen: { value: 'f', text: '全屏', },
                 webFullscreen: { value: 'w', text: '网页全屏', },
                 widescreen: { value: 'q', text: '宽屏', },
-                addSpeed: { value: ']', text: '速度+0.25', },
-                subSpeed: { value: '[', text: '速度-0.25', },
+                subSpeed: { value: '[', text: '减少速度', },
+                addSpeed: { value: ']', text: '增加速度', },
                 resetSpeed:  { value: '\\', text: '重置速度', },
                 danmu: { value: 'd', text: '弹幕', },
                 playAndPause: { value: 'p', text: '暂停播放', },
-                nextPart: { value: 'l', text: '下一P', },
                 prevPart: { value: 'k', text: '上一P', },
+                nextPart: { value: 'l', text: '下一P', },
                 showDanmuInput: { value: 'enter', text: '发弹幕', },
                 mirror: { value: 'j', text: '镜像', },
                 danmuTop: { value: 't', text: '顶部弹幕', },
@@ -231,36 +221,41 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 setRepeatStart: { value: '', text: '循环起点', },
                 setRepeatEnd: { value: '', text: '循环终点', },
                 resetRepeat: { value: '', text: '清除循环点', },
+                subVolume: { value: '', text: '减少音量', },
+                addVolume: { value: '', text: '增加音量', },
+                subProgress: { value: '', text: '快退', },
+                addProgress: { value: '', text: '快进', },
             },
             checkboxes: {
                 checkbox: {
                     options: {
-                        dblclick: { text: '双击全屏', status: ON, ban:[] },
-                        hint: { text: '快捷键提示', status: ON, ban:[] },
-                        autoHint: { text: '自动操作提示', status: ON, ban:[], tips: '自动关闭弹幕时的提示' },
-                        reloadPart: { text: '换P重新加载', status: OFF, ban:[], tips: '脚本已自动下一P.</br>勾选: 屏幕回到自动设置的模式.</br>不勾选: 屏幕和上一P一样,</br>番剧下一P不是续集换P会无效.' },
-                        danmuColor: { text: '统一弹幕颜色', status: OFF, ban:[], fn: 'initDanmuStyle' },
-                        hideSenderBar: { text: '隐藏弹幕栏', status: OFF, ban:[], fn: 'hideOrShowSenderBar', tips: '发弹幕快捷键可显示' },
+                        dblclick: { text: '双击全屏', status: ON },
+                        hint: { text: '快捷键提示', status: ON },
+                        autoHint: { text: '自动操作提示', status: ON, tips: '自动关闭弹幕时的提示' },
+                        reloadPart: { text: '换P重新加载', status: OFF, tips: '脚本已自动下一P.</br>勾选: 屏幕回到自动设置的模式.</br>不勾选: 屏幕和上一P一样,</br>番剧下一P不是续集换P会无效.' },
+                        danmuColor: { text: '统一弹幕颜色', status: OFF, fn: 'initDanmuStyle' },
+                        hideSenderBar: { text: '隐藏弹幕栏', status: OFF, fn: 'hideOrShowSenderBar', tips: '发弹幕快捷键可显示' },
                         widescreenScroll2Top: { text: '宽屏时回到顶部', status: OFF, ban:['widescreenSetOnTop'], fn: 'setWidescreenPos' },
                         widescreenSetOnTop: { text: '宽屏时播放器置顶部', status: OFF, ban:['widescreenScroll2Top'], fn: 'setWidescreenPos' },
-                        globalHotKey: { text: '默认快捷键设置全局', status: OFF, ban:[], tips: '上下左右空格不会滚动页面' },
-                        lightOffWhenPlaying: { text: '播放时自动关灯', status: OFF, ban:[], },
-                        lightOnWhenPause: { text: '暂停时自动开灯', status: OFF, ban:[], },
-                        ultraWidescreen: { text: '超宽屏', status: OFF, ban:[], fn: 'ultraWidescreen', tips: '宽屏模式宽度和窗口一样'},
-                        maxPlayerHeight: { text: '播放器高度和窗口一样', status: OFF, ban:[], fn: 'maxPlayerHeight'},
+                        globalHotKey: { text: '默认快捷键设置全局', status: OFF, tips: '上下左右空格不会滚动页面' },
+                        lightOffWhenPlaying: { text: '播放时自动关灯', status: OFF, },
+                        lightOnWhenPause: { text: '暂停时自动开灯', status: OFF, },
+                        ultraWidescreen: { text: '超宽屏', status: OFF, fn: 'ultraWidescreen', tips: '宽屏模式宽度和窗口一样'},
+                        maxPlayerHeight: { text: '播放器高度和窗口一样', status: OFF, fn: 'maxPlayerHeight'},
+                        danmuMask: { text: '关闭弹幕蒙版', status: OFF, fn: 'danmuMask'},
                     },
                     btn: '常规设置',
                 },
                 startCheckbox: {
                     options: {
-                        playAndPause: { text: '自动播放', status: ON, ban:[] },
-                        jump: { text: '自动转跳', status: ON, ban:[], tips: '跳转另一集无效, 配合跳转快捷键用'},
-                        lightOff: { text: '自动关灯', status: OFF, ban:[] },
+                        playAndPause: { text: '自动播放', status: ON },
+                        jump: { text: '自动转跳', status: ON, tips: '跳转另一集无效, 配合跳转快捷键用'},
+                        lightOff: { text: '自动关灯', status: OFF },
                         fullscreen: { text: '自动全屏', status: OFF, ban:['webFullscreen', 'widescreen'], tips: '浏览器限制不能真全屏' },
                         webFullscreen: { text: '自动网页全屏', status: ON, ban:['fullscreen', 'widescreen'] },
                         widescreen: { text: '自动宽屏', status: OFF, ban:['webFullscreen', 'fullscreen'] },
-                        danmuOFF: { text: '自动关闭弹幕', status: OFF, ban:[] },
-                        bangumiDanmuOFF: { text: '番剧自动关弹幕', status: OFF, ban:[] },
+                        danmuOFF: { text: '自动关闭弹幕', status: OFF },
+                        bangumiDanmuOFF: { text: '番剧自动关弹幕', status: OFF },
                         highQuality: { text: '自动最高画质', status: OFF, ban:['vipHighQuality'] },
                         vipHighQuality: { text: '自动最高画质(大会员使用)', status: OFF, ban:['highQuality'] },
                     },
@@ -268,13 +263,21 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 },
                 endCheckbox: {
                     options: {
-                        lightOn: { text: '播放结束自动开灯', status: OFF, ban:[], tips: '还有下一P不触发' },
+                        lightOn: { text: '播放结束自动开灯', status: OFF, tips: '还有下一P不触发' },
                         exitScreen: { text: '播放结束还原屏幕', status: OFF, ban:['exit2WideScreen'], tips: '还有下一P不触发' },
                         exit2WideScreen: { text: '播放结束还原宽屏', status: OFF, ban:['exitScreen'], tips: '还有下一P不触发' },
-                        autoJumpContent: { text: '跳过充电鸣谢', status: OFF, ban:[] },
+                        autoJumpContent: { text: '跳过充电鸣谢', status: OFF },
                     },
                     btn: '播放结束自动设置',
                 },
+            },
+            variable: {
+                speed: { text: '播放速度调整倍数', value: 0.25 },
+                minSpeed: { text: '最小播放速度倍数', value: 0.25 },
+                maxSpeed: { text: '最大播放速度倍数', value: 4 },
+                volume: { text: '音量调整百分比', value: 1 },
+                videoProgress: { text: '快进/快退调整秒数', value: 1 },
+                rotationDeg: { text: '旋转角度', value: 90 },
             },
         },
         bindPlayerEvent: function () {
@@ -293,9 +296,10 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             const styleNode = q('#qd-ultraWidescreen')[0];
             styleNode && styleNode.parentNode.removeChild(styleNode);
             if (GM_getValue('ultraWidescreen') === ON && !q('.mini-player')[0]) {
+                const clientWidth = document.body.clientWidth;
                 const marginLeft = (this.isNew ? q('.v-wrap') : this.isBangumi ? q('.bangumi-player') : q('#__bofqi')).getCss('margin-left');
                 const css = `
-                .mode-widescreen{width:${document.body.clientWidth}px!important;margin-left:-${marginLeft}!important}
+                .mode-widescreen{width:${clientWidth}px!important;margin-left:-${marginLeft}!important}
                 ${this.isNew ? '.guide{z-index:0!important}' : ''}
                 ${this.isBangumi ? '.bangumi-nav-right{z-index:0!important}' : ''}
                 `;
@@ -306,14 +310,23 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             const styleNode = q('#qd-maxPlayerHeight')[0];
             styleNode && styleNode.parentNode.removeChild(styleNode);
             if (GM_getValue('maxPlayerHeight') === ON && !q('.mini-player')[0]) {
-                const marginHeight = document.body.clientHeight - (parseFloat(q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).getCss('height')) || 0);
+                const clientHeight = document.body.clientHeight;
+                const marginHeight = clientHeight - (parseFloat(q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).getCss('height')) || 0);
                 const css = `
-                .player{height:${window.innerHeight}px!important}
-                ${this.isBangumi ? `#bangumi_player{height:${window.innerHeight}px}` : ''}
+                ${this.isBangumi ? '.bangumi-player:not(.mini-player)' : ''} .player{height:${clientHeight}px!important}
+                ${this.isBangumi ? `#bangumi_player{height:${clientHeight}px}` : ''}
                 ${this.isNew ? `.player-wrap{margin-bottom: ${marginHeight + (parseFloat(q('#arc_toolbar_report').getCss('margin-top')) || 0)}px!important}` : ''}
                 ${this.isNew && this.isWidescreen() ? `.r-con{margin-top: ${marginHeight}px!important}` : ''}
                 `;
                 this.addStyle(css, 'qd-maxPlayerHeight');
+            }
+        },
+        danmuMask: function () {
+            const styleNode = q('#qd-danmuMask')[0];
+            styleNode && styleNode.parentNode.removeChild(styleNode);
+            if (GM_getValue('danmuMask') === ON) {
+                const css = '.bilibili-player-video-danmaku{-webkit-mask-image: none!important}';
+                this.addStyle(css, 'qd-danmuMask');
             }
         },
         initHintStyle: function () {
@@ -337,6 +350,16 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         saveQuickDoKey: function (key, value) {
             GM_setValue(`quickDo-${key}`, value.toLowerCase());
+        },
+        getVarSetting: function (key) {
+            return parseFloat(GM_getValue(`quickDo-var-${key}`)) || this.config.variable[key].value;
+        },
+        saveVarSetting: function (key, value) {
+            let v = this.config.variable[key].value;
+            if ((v = parseFloat(value)) && v > 0) {
+                GM_setValue(`quickDo-var-${key}`, v);
+                return true;
+            }
         },
         bindKeydown: function () {
             this.keydownFn = this.keydownFn || (e=> !q('input:focus, textarea:focus').length && this.keyHandler(e));
@@ -369,17 +392,13 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 e.keyCode === this.keyCode.enter && this.hideDanmuInput();
             });
         },
-        addSpeed: function () {
-            if (this.h5Player[0].playbackRate < 4) {
-                this.h5Player[0].playbackRate += 0.25;
-                this.showHint(`${this.h5Player[0].playbackRate} X`);
-            }
+        addSpeed: function() {
+            this.h5Player[0].playbackRate = Math.min(this.h5Player[0].playbackRate + this.getVarSetting('speed'), this.getVarSetting('maxSpeed'));
+            this.showHint(`${this.h5Player[0].playbackRate} X`);
         },
-        subSpeed: function () {
-            if (this.h5Player[0].playbackRate > 0.5) {
-                this.h5Player[0].playbackRate -= 0.25;
-                this.showHint(`${this.h5Player[0].playbackRate} X`);
-            }
+        subSpeed: function() {
+            this.h5Player[0].playbackRate = Math.max(this.h5Player[0].playbackRate - this.getVarSetting('speed'), this.getVarSetting('minSpeed'));
+            this.showHint(`${this.h5Player[0].playbackRate} X`);
         },
         resetSpeed: function () {
             this.h5Player[0].playbackRate = 1;
@@ -538,6 +557,20 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             this.repeatEnd = this.repeatStart = undefined;
             this.showHint(`清除循环点`)
         },
+        subVolume: function () {
+            this.h5Player[0].volume = Math.max(this.h5Player[0].volume - (this.getVarSetting('volume') / 100), 0);
+            this.showHint(`音量 ${this.h5Player[0].volume * 100 | 0}%`)
+        },
+        addVolume: function () {
+            this.h5Player[0].volume = Math.min(this.h5Player[0].volume + (this.getVarSetting('volume') / 100), 1);
+            this.showHint(`音量 ${this.h5Player[0].volume * 100 | 0}%`)
+        },
+        subProgress: function () {
+            this.h5Player[0].currentTime += this.getVarSetting('videoProgress');
+        },
+        addProgress: function () {
+            this.h5Player[0].currentTime += this.getVarSetting('videoProgress');
+        },
         keyHandler: function (e) {
             const {keyCode, ctrlKey, shiftKey, altKey} = e;
             if (ctrlKey || shiftKey || altKey) {
@@ -689,7 +722,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
         },
         h5PlayerRotate: function (flag) {
             const h5Player = this.h5Player[0];
-            const deg = this.rotationDeg(this.h5Player) + 90 * flag;
+            const deg = this.getRotationDeg(this.h5Player) + this.getVarSetting('rotationDeg') * flag;
             let transform = `rotate(${deg}deg)`;
             if (deg == 0 || deg == 180 * flag) {
                 transform += ` scale(1)`;
@@ -699,16 +732,16 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             this.setH5PlayerRransform(transform);
         },
         setH5PlayerRransform: function (transform) {
-            this.h5Player.css('-webkit-transform', transform);
-            this.h5Player.css('-moz-transform', transform);
-            this.h5Player.css('-ms-transform', transform);
-            this.h5Player.css('-o-transform', transform);
-            this.h5Player.css('transform', transform);
+            this.h5Player.css('-webkit-transform', transform)
+                .css('-moz-transform', transform)
+                .css('-ms-transform', transform)
+                .css('-o-transform', transform)
+                .css('transform', transform);
         },
         getTransformCss: function (e) {
             return e.getCss('-webkit-transform') || e.getCss('-moz-transform') || e.getCss('-ms-transform') || e.getCss('-o-transform') || 'none';
         },
-        rotationDeg: function (e) {
+        getRotationDeg: function (e) {
             const transformCss = this.getTransformCss(e);
             let matrix = transformCss.match('matrix\\((.*)\\)');
             if (matrix) {
@@ -750,6 +783,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 q('.bilibili-player-video-control .bilibili-player-video-btn-setting-panel').css('height', 'auto');
             }
             this.initKeySettingHTML();
+            this.initVarSettingHTML();
         },
         initCheckboxHTML: function (panel, configName, options, btn) {
             if (btn) {
@@ -770,7 +804,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 checkbox.on('click', () => {
                     const gmvalue = GM_getValue(key) === ON ? OFF : ON;
                     GM_setValue(key, gmvalue);
-                    gmvalue === ON && ban.forEach((k,i) => GM_getValue(k) === ON && q(`#cb-${k}`).click());
+                    gmvalue === ON && ban && ban.forEach((k,i) => GM_getValue(k) === ON && q(`#cb-${k}`).click());
                     !this.isNew && q(`#${checkboxId}-lable`).toggleClass('bpui-state-active', gmvalue === ON);
                     fn && this[fn](gmvalue === ON);
                 });
@@ -830,7 +864,8 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             const color = this.isNew ? 'black' : 'white';
             q('#quick-do-setting-panel').append(`
                 <span id="quick-do-setting-key-btn" style="display: inline-block;width: 100%;float: left;">快捷键设置</span>
-                <div id="quick-do-setting-key-panel" style="display: none;position: absolute;right: 0px;bottom: 40px;background-color: ${color};padding: 10px;text-align: left;z-index: 1;border: 3px double #222;">
+                <div id="quick-do-setting-key-panel" style="display: none;position: absolute;right: 0px;bottom: 60px;background-color: ${color};padding: 10px;text-align: left;z-index: 1;border: 3px double #222;">
+                <div style="text-align: center">a-z [ ] \\ ; ' , . / - = enter</div>
                 </div>
             `);
             const keyPanel = q('#quick-do-setting-key-panel');
@@ -872,6 +907,41 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
                 <span>${text}</span>
             </div>`;
         },
+        initVarSettingHTML: function () {
+            const color = this.isNew ? 'black' : 'white';
+            q('#quick-do-setting-panel').append(`
+                <span id="quick-do-setting-var-btn" style="display: inline-block;width: 100%;float: left;">变量设置</span>
+                <div id="quick-do-setting-var-panel" style="display: none;position: absolute;right: 0px;bottom: 40px;background-color: ${color};padding: 10px;text-align: left;z-index: 1;border: 3px double #222;">
+                <div style="text-align: center">非B站默认快捷键的变量</div>
+                </div>
+            `);
+            const keyPanel = q('#quick-do-setting-var-panel');
+            q('#quick-do-setting-var-btn').on('click', () => keyPanel.getCss('display') == 'none' ? keyPanel.css('display', 'block') : keyPanel.css('display', 'none'));
+            for (let [key, { value, text }] of Object.entries(this.config.variable)) {
+                value = this.getVarSetting(key);
+                const inputId = `qd-var-input-${key}`;
+                keyPanel.append(this.isNew ? this.getNewVarSettingHTML(inputId, text, value) : this.getVarSettingHTML(inputId, text, value));
+                const varInput = q(`#${inputId}`);
+                varInput.on('blur', () => this.saveVarSetting(key, varInput.val()) || varInput.val(this.getVarSetting(key)) ).on('click', e => {
+                    varInput.select();
+                    e.preventDefault();
+                });
+            }
+        },
+        getVarSettingHTML: function (inputId, text, value) {
+            return `
+            <div style="float: left;width: 100%;">
+                <input id="${inputId}" value="${value}" maxlength=5 style="display: inline-block;width: 30px;"></input>
+                <span>${text}</span>
+            </div>`;
+        },
+        getNewVarSettingHTML: function (inputId, text, value) {
+            return `
+            <div class="bilibili-player-fl bui bui-dark" style="width: 100%;">
+                <input type="input" id="${inputId}" value="${value}" maxlength=5 style="display: inline-block;width: 30px;color: black;"></input>
+                <span>${text}</span>
+            </div>`;
+        },
         checkHint: function (auto = false) {
             return auto ? GM_getValue('autoHint') === ON : GM_getValue('hint') === ON;
         },
@@ -909,6 +979,7 @@ https://github.com/jeayu/bilibili-quickdo/blob/master/README.md#更新历史
             } else if  (GM_getValue('exit2WideScreen') === ON) {
                 this.playerMode(WIDESCREEN);
             }
+            this.reload = true;
         },
         init: function () {
             let stageFlag = undefined;
