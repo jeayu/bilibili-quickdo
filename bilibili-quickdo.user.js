@@ -20,9 +20,10 @@
         if (typeof selector === 'string') {
             Object.assign(nodes, document.querySelectorAll(selector));
             nodes.selectorStr = selector;
+        } else if (selector instanceof NodeList) {
+            Object.assign(nodes, selector);
         } else if (selector instanceof Node) {
             nodes = [selector];
-            nodes.selectorStr = '';
         }
         nodes.click = function (index = 0) {
             nodes.length > index && nodes[index].click();
@@ -63,8 +64,8 @@
             nodes[index].insertAdjacentHTML(where, text);
             return this;
         }
-        nodes.find = function (name) {
-            return q(`${this.selectorStr} ${name}`);
+        nodes.find = function (name, index = 0) {
+            return q(nodes[index].querySelectorAll(name));
         }
         nodes.toggleClass = function (className, flag, index = 0) {
             return flag ? this.addClass(className, index) : this.removeClass(className, index);
@@ -105,16 +106,12 @@
             }
             return nodes[index].value;
         }
-        nodes.offsetTop = function (index = 0) {
+        nodes.offset = function (index = 0) {
             if (nodes.length <= index) {
-                return 0;
+                return {top: 0, left: 0};
             }
-            let n = nodes[index];
-            let top = 0;
-            while (n = n.offsetParent) {
-                top += n.offsetTop;
-            }
-            return top;
+            const rect = nodes[index].getBoundingClientRect();
+            return {top: rect.top + document.body.scrollTop, left: rect.left + document.body.scrollLeft}
         }
         nodes.parseFloat = function (css, index = 0) {
             return (parseFloat(this.getCss(css, index)) || 0);
@@ -133,7 +130,6 @@
         isWatchlater: false,
         repeatStart: undefined,
         repeatEnd: undefined,
-        playerOffsetTop: 0,
         keyCode: {
             'enter': 13,
             'esc': 27,
@@ -296,9 +292,9 @@
             styleNode && styleNode.parentNode.removeChild(styleNode);
             if (this.getCheckboxSetting('ultraWidescreen') === ON && !q('.mini-player')[0]) {
                 const clientWidth = document.body.clientWidth;
-                const marginLeft = (this.isNew ? q('.v-wrap') : this.isBangumi ? q('.bangumi-player') : this.isWatchlater ? q('.bili-wrapper') : q('#__bofqi')).getCss('margin-left');
+                const marginLeft = q('#bofqi').offset().left;
                 const css = `
-                .mode-widescreen{width:${clientWidth}px!important;margin-left:-${marginLeft}!important}
+                .mode-widescreen{width:${clientWidth}px!important;margin-left:-${marginLeft}px!important}
                 ${this.isNew ? '.guide{z-index:0!important}' : ''}
                 ${this.isBangumi ? '.bangumi-nav-right{z-index:0!important}' : ''}
                 `;
@@ -458,7 +454,8 @@
             window.scrollTo(0, 0);
         },
         playerSetOnTop: function () {
-            window.scrollTo(0, this.playerOffsetTop);
+            this.scroll2Top();
+            window.scrollTo(0, q('#bofqi').offset().top);
         },
         danmu: function (auto = false) {
             if (this.isNew) {
@@ -609,7 +606,7 @@
             if (this.getCheckboxSetting('highQuality') === ON || this.getCheckboxSetting('vipHighQuality') === ON) {
                 q('.bilibili-player-video-quality-menu').mouseover().mouseout();
                 const btn = this.isNew ? q('.bui-select-item') : q('.bpui-selectmenu-list-row');
-                const index = this.getCheckboxSetting('highQuality') === ON ? btn.findIndex(e => !$(e).find('.bilibili-player-bigvip')[0]) : 0;
+                const index = this.getCheckboxSetting('highQuality') === ON ? btn.findIndex(e => !q(e).find('.bilibili-player-bigvip')[0]) : 0;
                 btn.click(index);
             }
             if (this.reload && this.getCheckboxSetting('jump') === ON) {
@@ -619,7 +616,6 @@
         },
         autoHandler: function () {
             this.h5Player = q('#bofqi .bilibili-player-video video');
-            this.playerOffsetTop = this.isNew ? this.h5Player.offsetTop() : q('.player').offsetTop();
             if (this.getCheckboxSetting('playAndPause') === ON) {
                 this.getCheckboxSetting('playAndPause') === ON && this.h5Player[0].play();
             }
@@ -668,8 +664,8 @@
                 if (!this.reload) {
                     const index = newPart.hasClass('episode-item') ? q('.episode-item').findIndex(e => e.className.indexOf('on') > 0)  : player.getPlaylistIndex();
                     isNext ? player.next(index + 2) : player.next(index);
-                } else if (newPart[0].children && newPart[0].children.length) {
-                    newPart[0].children[0].click();
+                } else if (newPart.find('a')[0]) {
+                    newPart.find('a').click();
                 } else {
                     newPart.click();
                 }
