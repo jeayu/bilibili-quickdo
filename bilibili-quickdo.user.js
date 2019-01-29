@@ -13,11 +13,6 @@
 // @grant        GM_getValue
 // ==/UserScript==
 
-/*
-v0.9.9 更新：
-变量设置页面
- */
-
 (function () {
     'use strict';
     const q = function (selector) {
@@ -121,6 +116,9 @@ v0.9.9 更新：
             }
             return top;
         }
+        nodes.parseFloat = function (css, index = 0) {
+            return (parseFloat(this.getCss(css, index)) || 0);
+        }
         return nodes;
     }
     const [ON, OFF] = [1, 0];
@@ -132,6 +130,7 @@ v0.9.9 更新：
         reload: true,
         isNew: false,
         isBangumi: false,
+        isWatchlater: false,
         repeatStart: undefined,
         repeatEnd: undefined,
         playerOffsetTop: 0,
@@ -297,7 +296,7 @@ v0.9.9 更新：
             styleNode && styleNode.parentNode.removeChild(styleNode);
             if (GM_getValue('ultraWidescreen') === ON && !q('.mini-player')[0]) {
                 const clientWidth = document.body.clientWidth;
-                const marginLeft = (this.isNew ? q('.v-wrap') : this.isBangumi ? q('.bangumi-player') : q('#__bofqi')).getCss('margin-left');
+                const marginLeft = (this.isNew ? q('.v-wrap') : this.isBangumi ? q('.bangumi-player') : this.isWatchlater ? q('.bili-wrapper') : q('#__bofqi')).getCss('margin-left');
                 const css = `
                 .mode-widescreen{width:${clientWidth}px!important;margin-left:-${marginLeft}!important}
                 ${this.isNew ? '.guide{z-index:0!important}' : ''}
@@ -311,12 +310,12 @@ v0.9.9 更新：
             styleNode && styleNode.parentNode.removeChild(styleNode);
             if (GM_getValue('maxPlayerHeight') === ON && !q('.mini-player')[0]) {
                 const clientHeight = document.body.clientHeight;
-                const marginHeight = clientHeight - (parseFloat(q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).getCss('height')) || 0);
+                const marginHeight = clientHeight - q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).parseFloat('height');
                 const css = `
                 ${this.isBangumi ? '.bangumi-player:not(.mini-player)' : ''} .player{height:${clientHeight}px!important}
                 ${this.isBangumi ? `#bangumi_player{height:${clientHeight}px}` : ''}
-                ${this.isNew ? `.player-wrap{margin-bottom: ${marginHeight + (parseFloat(q('#arc_toolbar_report').getCss('margin-top')) || 0)}px!important}` : ''}
-                ${this.isNew && this.isWidescreen() ? `.r-con{margin-top: ${marginHeight}px!important}` : ''}
+                ${this.isNew ? `.player-wrap{margin-bottom: ${marginHeight + q('#arc_toolbar_report').parseFloat('margin-top')}px!important}` : ''}
+                ${this.isNew ? `.player-mode-widescreen .r-con{margin-top: ${marginHeight}px!important}` : ''}
                 `;
                 this.addStyle(css, 'qd-maxPlayerHeight');
             }
@@ -760,6 +759,7 @@ v0.9.9 更新：
         initSettingHTML: function () {
             this.isNew = q('.bilibili-player-video-btn-setting').mouseover()[0];
             this.isBangumi = window.location.href.indexOf('bangumi') >= 0;
+            this.isWatchlater = window.location.href.indexOf('watchlater') >= 0;
             let panel = q('.bilibili-player-video-btn-setting-panel-panel-others');
             if (!this.isNew) {
                 q('.bilibili-player-video-btn-quality').append(`
