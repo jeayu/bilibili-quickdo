@@ -280,7 +280,7 @@
             },
         },
         bindPlayerEvent: function () {
-            player.addEventListener('dblclick', () => GM_getValue('dblclick') === ON && this.fullscreen());
+            player.addEventListener('dblclick', () => this.getCheckboxSetting('dblclick') === ON && this.fullscreen());
             player.addEventListener('video_resize', () => {
                 this.hideSenderBar();
                 setTimeout(() => this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos(), this.isNew ? 0 : 100);
@@ -288,13 +288,13 @@
                 this.maxPlayerHeight();
             });
             player.addEventListener('video_media_ended', () => this.videoEndedHander());
-            player.addEventListener('video_media_playing', () => GM_getValue('lightOffWhenPlaying') === ON && !this.isLightOff() && this.lightOff());
-            player.addEventListener('video_media_pause', () => GM_getValue('lightOnWhenPause') === ON && this.isLightOff() && this.lightOff());
+            player.addEventListener('video_media_playing', () => this.getCheckboxSetting('lightOffWhenPlaying') === ON && !this.isLightOff() && this.lightOff());
+            player.addEventListener('video_media_pause', () => this.getCheckboxSetting('lightOnWhenPause') === ON && this.isLightOff() && this.lightOff());
         },
         ultraWidescreen: function () {
             const styleNode = q('#qd-ultraWidescreen')[0];
             styleNode && styleNode.parentNode.removeChild(styleNode);
-            if (GM_getValue('ultraWidescreen') === ON && !q('.mini-player')[0]) {
+            if (this.getCheckboxSetting('ultraWidescreen') === ON && !q('.mini-player')[0]) {
                 const clientWidth = document.body.clientWidth;
                 const marginLeft = (this.isNew ? q('.v-wrap') : this.isBangumi ? q('.bangumi-player') : this.isWatchlater ? q('.bili-wrapper') : q('#__bofqi')).getCss('margin-left');
                 const css = `
@@ -308,7 +308,7 @@
         maxPlayerHeight: function () {
             const styleNode = q('#qd-maxPlayerHeight')[0];
             styleNode && styleNode.parentNode.removeChild(styleNode);
-            if (GM_getValue('maxPlayerHeight') === ON && !q('.mini-player')[0]) {
+            if (this.getCheckboxSetting('maxPlayerHeight') === ON && !q('.mini-player')[0]) {
                 const clientHeight = document.body.clientHeight;
                 const marginHeight = clientHeight - q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).parseFloat('height');
                 const css = `
@@ -323,7 +323,7 @@
         danmuMask: function () {
             const styleNode = q('#qd-danmuMask')[0];
             styleNode && styleNode.parentNode.removeChild(styleNode);
-            if (GM_getValue('danmuMask') === ON) {
+            if (this.getCheckboxSetting('danmuMask') === ON) {
                 const css = '.bilibili-player-video-danmaku{-webkit-mask-image: none!important}';
                 this.addStyle(css, 'qd-danmuMask');
             }
@@ -344,21 +344,38 @@
         getKeyCode: function (type) {
             return this.keyCode[this.getQuickDoKey(type)];
         },
-        getQuickDoKey: function (key) {
-            return GM_getValue(`quickDo-${key}`);
+        getQuickDoKey: function (key, newVersion=this.isNew) {
+            return GM_getValue(`quickDo-${this.getVersionKey(key, newVersion)}`);
         },
-        saveQuickDoKey: function (key, value) {
-            GM_setValue(`quickDo-${key}`, value.toLowerCase());
+        saveQuickDoKey: function (key, value, newVersion=this.isNew) {
+            GM_setValue(`quickDo-${this.getVersionKey(key, newVersion)}`, value.toLowerCase());
         },
-        getVarSetting: function (key) {
-            return parseFloat(GM_getValue(`quickDo-var-${key}`)) || this.config.variable[key].value;
+        getVarSetting: function (key, newVersion=this.isNew) {
+            return parseFloat(GM_getValue(`quickDo-var-${this.getVersionKey(key, newVersion)}`)) || this.config.variable[key].value;
         },
-        saveVarSetting: function (key, value) {
+        saveVarSetting: function (key, value, newVersion=this.isNew) {
             let v = this.config.variable[key].value;
             if ((v = parseFloat(value)) && v > 0) {
-                GM_setValue(`quickDo-var-${key}`, v);
+                GM_setValue(`quickDo-var-${this.getVersionKey(key, newVersion)}`, v);
                 return true;
             }
+        },
+        getVersionKey: function (key, newVersion=this.isNew) {
+            return newVersion ? key : `old-${key}`;
+        },
+        getCheckboxSetting: function (key, newVersion=this.isNew) {
+            return GM_getValue(this.getVersionKey(key, newVersion));
+        },
+        saveCheckboxSetting: function (key, value, newVersion=this.isNew) {
+            return GM_setValue(this.getVersionKey(key, newVersion), value);
+        },
+        syncNewConfig2Old: function () {
+            Object.keys(this.config.quickDo).forEach(key => this.saveQuickDoKey(key, this.getQuickDoKey(key, true), false));
+            Object.keys(this.config.variable).forEach(key => this.saveVarSetting(key, this.getVarSetting(key, true), false));
+            Object.entries(this.config.checkboxes).forEach(([configName, {
+                options,
+            }]) => Object.keys(options).forEach(key => this.saveCheckboxSetting(key, this.getCheckboxSetting(key, true), false)));
+            this.isNew ? this.showHint('同步完成') : location.reload();
         },
         bindKeydown: function () {
             this.keydownFn = this.keydownFn || (e=> !q('input:focus, textarea:focus').length && this.keyHandler(e));
@@ -435,7 +452,7 @@
             if (!this.isWidescreen()) {
                 return;
             }
-            GM_getValue('widescreenScroll2Top') === ON ? this.scroll2Top() : GM_getValue('widescreenSetOnTop') === ON && this.playerSetOnTop();
+            this.getCheckboxSetting('widescreenScroll2Top') === ON ? this.scroll2Top() : this.getCheckboxSetting('widescreenSetOnTop') === ON && this.playerSetOnTop();
         },
         scroll2Top: function () {
             window.scrollTo(0, 0);
@@ -575,7 +592,7 @@
             if (ctrlKey || shiftKey || altKey) {
                 return;
             }
-            if (GM_getValue('globalHotKey') === ON) {
+            if (this.getCheckboxSetting('globalHotKey') === ON) {
                 const {left, up, right, down, space} = this.keyCode;
                 if ([left, up, right, down, space].some(kc => kc === keyCode)) {
                     this.focusPlayer();
@@ -589,13 +606,13 @@
             e.defaultPrevented || this.oldControlHide();
         },
         autoHandlerForStage1: function () {
-            if (GM_getValue('highQuality') === ON || GM_getValue('vipHighQuality') === ON) {
+            if (this.getCheckboxSetting('highQuality') === ON || this.getCheckboxSetting('vipHighQuality') === ON) {
                 q('.bilibili-player-video-quality-menu').mouseover().mouseout();
                 const btn = this.isNew ? q('.bui-select-item') : q('.bpui-selectmenu-list-row');
-                const index = GM_getValue('highQuality') === ON ? btn.findIndex(e => !$(e).find('.bilibili-player-bigvip')[0]) : 0;
+                const index = this.getCheckboxSetting('highQuality') === ON ? btn.findIndex(e => !$(e).find('.bilibili-player-bigvip')[0]) : 0;
                 btn.click(index);
             }
-            if (this.reload && GM_getValue('jump') === ON) {
+            if (this.reload && this.getCheckboxSetting('jump') === ON) {
                 this.jump();
             }
             this.oldControlHide();
@@ -603,10 +620,10 @@
         autoHandler: function () {
             this.h5Player = q('#bofqi .bilibili-player-video video');
             this.playerOffsetTop = this.isNew ? this.h5Player.offsetTop() : q('.player').offsetTop();
-            if (GM_getValue('playAndPause') === ON) {
-                GM_getValue('playAndPause') === ON && this.h5Player[0].play();
+            if (this.getCheckboxSetting('playAndPause') === ON) {
+                this.getCheckboxSetting('playAndPause') === ON && this.h5Player[0].play();
             }
-            if (GM_getValue('danmuOFF') === ON || this.isBangumi && GM_getValue('bangumiDanmuOFF') === ON) {
+            if (this.getCheckboxSetting('danmuOFF') === ON || this.isBangumi && this.getCheckboxSetting('bangumiDanmuOFF') === ON) {
                 let flag = q('.bilibili-player-video-danmaku-switch input').mouseover().mouseout();
                 flag = q('.choose_danmaku').text().indexOf('关闭') > -1 ||
                     !flag[0] && !q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku_close"]')[0];
@@ -621,14 +638,14 @@
             if (!this.reload) {
                 return;
             }
-            if (GM_getValue('lightOff') === ON && !this.isLightOff()) {
+            if (this.getCheckboxSetting('lightOff') === ON && !this.isLightOff()) {
                 this.lightOff();
             }
-            if (GM_getValue('fullscreen') === ON && !this.isFullScreen()) {
+            if (this.getCheckboxSetting('fullscreen') === ON && !this.isFullScreen()) {
                 this.playerMode(FULLSCREEN);
-            } else if (GM_getValue('webFullscreen') === ON) {
+            } else if (this.getCheckboxSetting('webFullscreen') === ON) {
                 this.playerMode(WEBFULLSCREEN);
-            } else if (GM_getValue('widescreen') === ON) {
+            } else if (this.getCheckboxSetting('widescreen') === ON) {
                 this.playerMode(WIDESCREEN);
             }
         },
@@ -647,7 +664,7 @@
         partHandler: function (isNext) {
             const newPart = this.getNewPart(isNext);
             if (newPart) {
-                this.reload = GM_getValue('reloadPart') === ON;
+                this.reload = this.getCheckboxSetting('reloadPart') === ON;
                 if (!this.reload) {
                     const index = newPart.hasClass('episode-item') ? q('.episode-item').findIndex(e => e.className.indexOf('on') > 0)  : player.getPlaylistIndex();
                     isNext ? player.next(index + 2) : player.next(index);
@@ -699,7 +716,7 @@
             this.hideSenderBar(status) || this.showSenderBar();
         },
         hideSenderBar: function (flag = false) {
-            return (flag || GM_getValue('hideSenderBar') === ON) && q('.bilibili-player-video-sendbar').css('opacity', 0).css('display', 'none')[0];
+            return (flag || this.getCheckboxSetting('hideSenderBar') === ON) && q('.bilibili-player-video-sendbar').css('opacity', 0).css('display', 'none')[0];
         },
         showSenderBar: function () {
             q('.bilibili-player-video-sendbar').css('opacity', 1).css('display', 'flex');
@@ -782,8 +799,13 @@
                 q('.bilibili-player-video-btn-setting').mouseout();
                 q('.bilibili-player-video-control .bilibili-player-video-btn-setting-panel').css('height', 'auto');
             }
+            q('#quick-do-setting-panel').append(`
+                <span id="quick-do-setting-sycn-btn" style="display: inline-block;width: 100%;float: left;">同步新版配置到旧版</span>
+            `);
+            q('#quick-do-setting-sycn-btn').on('click', () => confirm("确认同步?") && this.syncNewConfig2Old());
             this.initKeySettingHTML();
             this.initVarSettingHTML();
+            
         },
         initCheckboxHTML: function (panel, configName, options, btn) {
             if (btn) {
@@ -795,16 +817,16 @@
             for (let [key, { text, status, ban, fn, tips }] of Object.entries(options)) {
                 const checkboxId = `cb-${key}`;
                 panel.append(this.isNew ? this.getNewSettingHTML(checkboxId, text, tips) : this.getSettingHTML(checkboxId, text, tips));
-                if (GM_getValue(key) === undefined) {
-                    GM_setValue(key, status);
+                if (this.getCheckboxSetting(key) === undefined) {
+                    this.saveCheckboxSetting(key, status);
                 }
-                const checked = GM_getValue(key) === ON;
+                const checked = this.getCheckboxSetting(key) === ON;
                 const checkbox = q(`#${checkboxId}`);
                 checked && this.isNew ? checkbox.click() : q(`#${checkboxId}-lable`).toggleClass('bpui-state-active', checked);
                 checkbox.on('click', () => {
-                    const gmvalue = GM_getValue(key) === ON ? OFF : ON;
-                    GM_setValue(key, gmvalue);
-                    gmvalue === ON && ban && ban.forEach((k,i) => GM_getValue(k) === ON && q(`#cb-${k}`).click());
+                    const gmvalue = this.getCheckboxSetting(key) === ON ? OFF : ON;
+                    this.saveCheckboxSetting(key, gmvalue);
+                    gmvalue === ON && ban && ban.forEach((k,i) => this.getCheckboxSetting(k) === ON && q(`#cb-${k}`).click());
                     !this.isNew && q(`#${checkboxId}-lable`).toggleClass('bpui-state-active', gmvalue === ON);
                     fn && this[fn](gmvalue === ON);
                 });
@@ -943,7 +965,7 @@
             </div>`;
         },
         checkHint: function (auto = false) {
-            return auto ? GM_getValue('autoHint') === ON : GM_getValue('hint') === ON;
+            return auto ? this.getCheckboxSetting('autoHint') === ON : this.getCheckboxSetting('hint') === ON;
         },
         showHint: function (info, auto = false) {
             if (!this.checkHint(auto)) {
@@ -965,18 +987,18 @@
         },
         videoEndedHander: function () {
             this.repeatEnd = this.repeatStart = undefined;
-            if (GM_getValue('autoJumpContent') === ON) {
+            if (this.getCheckboxSetting('autoJumpContent') === ON) {
                 setTimeout(() => this.jumpContent(), 0);
             }
             if (this.isRepeatPlay() || this.partHandler(true)) {
                 return;
             }
-            if (GM_getValue('lightOn') === ON && this.isLightOff()) {
+            if (this.getCheckboxSetting('lightOn') === ON && this.isLightOff()) {
                 this.lightOff();
             }
-            if (GM_getValue('exitScreen') === ON) {
+            if (this.getCheckboxSetting('exitScreen') === ON) {
                 this.playerMode(DEFAULT);
-            } else if  (GM_getValue('exit2WideScreen') === ON) {
+            } else if  (this.getCheckboxSetting('exit2WideScreen') === ON) {
                 this.playerMode(WIDESCREEN);
             }
             this.reload = true;
