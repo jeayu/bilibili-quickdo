@@ -235,7 +235,8 @@
                         globalHotKey: { text: '默认快捷键设置全局', status: OFF, tips: '上下左右空格不会滚动页面' },
                         lightOffWhenPlaying: { text: '播放时自动关灯', status: OFF, },
                         lightOnWhenPause: { text: '暂停时自动开灯', status: OFF, },
-                        ultraWidescreen: { text: '超宽屏', status: OFF, fn: 'ultraWidescreen', tips: '宽屏模式宽度和窗口一样'},
+                        ultraWidescreen: { text: '超宽屏', status: OFF, ban:['hugeWidescreen'], fn: 'ultraWidescreen', tips: '宽屏模式宽度和窗口一样'},
+                        hugeWidescreen: { text: '巨幕', status: OFF, ban:['ultraWidescreen'], fn: 'hugeWidescreen', tips: '宽屏模式宽高和窗口一样'},
                         maxPlayerHeight: { text: '播放器高度和窗口一样', status: OFF, fn: 'maxPlayerHeight'},
                         danmuMask: { text: '关闭弹幕蒙版', status: OFF, fn: 'danmuMask'},
                     },
@@ -279,13 +280,35 @@
             player.addEventListener('dblclick', () => this.getCheckboxSetting('dblclick') === ON && this.fullscreen());
             player.addEventListener('video_resize', () => {
                 this.hideSenderBar();
+                q('body').toggleClass('qd-wide-flag', this.isWidescreen());
                 setTimeout(() => this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos(), this.isNew ? 0 : 100);
                 this.ultraWidescreen();
                 this.maxPlayerHeight();
+                this.hugeWidescreen();
             });
             player.addEventListener('video_media_ended', () => this.videoEndedHander());
             player.addEventListener('video_media_playing', () => this.getCheckboxSetting('lightOffWhenPlaying') === ON && !this.isLightOff() && this.lightOff());
             player.addEventListener('video_media_pause', () => this.getCheckboxSetting('lightOnWhenPause') === ON && this.isLightOff() && this.lightOff());
+        },
+        hugeWidescreen: function () {
+            const styleNode = q('#qd-hugeWidescreen')[0];
+            styleNode && styleNode.parentNode.removeChild(styleNode);
+            if (this.getCheckboxSetting('hugeWidescreen') === ON && !q('.mini-player')[0]) {
+                const clientWidth = document.body.clientWidth;
+                const marginLeft = q('#bofqi').offset().left;
+                const clientHeight = document.body.clientHeight;
+                const marginHeight = clientHeight - q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).parseFloat('height');
+                const css = `
+                .qd-wide-flag .mode-widescreen{width:${clientWidth}px!important;margin-left:-${marginLeft}px!important}
+                ${this.isNew ? '.qd-wide-flag .guide{z-index:0!important}' : ''}
+                ${this.isBangumi ? '.qd-wide-flag .bangumi-nav-right{z-index:0!important}' : ''}
+                .qd-wide-flag ${this.isBangumi ? '.bangumi-player:not(.mini-player)' : ''} .player{height:${clientHeight}px!important}
+                ${this.isBangumi ? `.qd-wide-flag #bangumi_player{height:${clientHeight}px}` : ''}
+                ${this.isNew ? `.qd-wide-flag .player-wrap{margin-bottom: ${marginHeight + q('#arc_toolbar_report').parseFloat('margin-top')}px!important}` : ''}
+                ${this.isNew ? `.qd-wide-flag .r-con{margin-top: ${marginHeight}px!important}` : ''}
+                `;
+                this.addStyle(css, 'qd-hugeWidescreen');
+            }
         },
         ultraWidescreen: function () {
             const styleNode = q('#qd-ultraWidescreen')[0];
@@ -294,9 +317,9 @@
                 const clientWidth = document.body.clientWidth;
                 const marginLeft = q('#bofqi').offset().left;
                 const css = `
-                .mode-widescreen{width:${clientWidth}px!important;margin-left:-${marginLeft}px!important}
-                ${this.isNew ? '.guide{z-index:0!important}' : ''}
-                ${this.isBangumi ? '.bangumi-nav-right{z-index:0!important}' : ''}
+                .qd-wide-flag .mode-widescreen{width:${clientWidth}px!important;margin-left:-${marginLeft}px!important}
+                ${this.isNew ? '.qd-wide-flag .guide{z-index:0!important}' : ''}
+                ${this.isBangumi ? '.qd-wide-flag .bangumi-nav-right{z-index:0!important}' : ''}
                 `;
                 this.addStyle(css, 'qd-ultraWidescreen');
             }
@@ -311,7 +334,7 @@
                 ${this.isBangumi ? '.bangumi-player:not(.mini-player)' : ''} .player{height:${clientHeight}px!important}
                 ${this.isBangumi ? `#bangumi_player{height:${clientHeight}px}` : ''}
                 ${this.isNew ? `.player-wrap{margin-bottom: ${marginHeight + q('#arc_toolbar_report').parseFloat('margin-top')}px!important}` : ''}
-                ${this.isNew ? `.player-mode-widescreen .r-con{margin-top: ${marginHeight}px!important}` : ''}
+                ${this.isNew ? `.qd-wide-flag .r-con{margin-top: ${marginHeight}px!important}` : ''}
                 `;
                 this.addStyle(css, 'qd-maxPlayerHeight');
             }
@@ -443,6 +466,7 @@
         playerMode: function (mode) {
             player.mode(mode);
             mode === WIDESCREEN && setTimeout(() => this.setWidescreenPos(), 100);
+            q('body').toggleClass('qd-wide-flag', this.isWidescreen());
         },
         setWidescreenPos: function () {
             if (!this.isWidescreen()) {
