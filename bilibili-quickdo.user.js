@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.9.1
+// @version      0.9.9.2
 // @description  快捷键设置,回车快速发弹幕,双击全屏,自动选择最高清画质、播放、全屏、关闭弹幕、自动转跳和自动关灯等
 // @author       jeayu
 // @license      MIT
@@ -556,7 +556,7 @@
             }
         },
         seek: function () {
-            this.oldControlShow() ||  this.newControlShow();
+            this.oldControlShow() || this.newControlShow();
             this.triggerSleep(q('.bilibili-player-video-time-wrap').mouseover())
                 .then(() => q('input.bilibili-player-video-time-seek').select()).catch(() => {});
             return true;
@@ -693,7 +693,7 @@
             if (newPart) {
                 this.reload = this.getCheckboxSetting('reloadPart') === ON;
                 if (!this.reload) {
-                    const index = newPart.hasClass('episode-item') ? q('.episode-item').findIndex(e => e.className.indexOf('on') > 0)  : player.getPlaylistIndex();
+                    const index = newPart.hasClass('episode-item') ? q('.episode-item').findIndex(e => e.className.indexOf('on') > 0) : player.getPlaylistIndex();
                     isNext ? player.next(index + 2) : player.next(index);
                 } else if (newPart.find('a')[0]) {
                     newPart.find('a').click();
@@ -802,6 +802,7 @@
         },
         initSettingHTML: function () {
             this.isNew = q('.bilibili-player-video-btn-setting').mouseover()[0];
+            this.isNew && this.newControlHide();
             this.isBangumi = window.location.href.indexOf('bangumi') >= 0;
             this.isNewBangumi = this.isBangumi && this.isNew;
             this.isWatchlater = window.location.href.indexOf('watchlater') >= 0;
@@ -1027,7 +1028,7 @@
             }
             if (this.getCheckboxSetting('exitScreen') === ON) {
                 this.playerMode(DEFAULT);
-            } else if  (this.getCheckboxSetting('exit2WideScreen') === ON) {
+            } else if (this.getCheckboxSetting('exit2WideScreen') === ON) {
                 this.playerMode(WIDESCREEN);
             }
             this.reload = true;
