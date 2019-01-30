@@ -127,6 +127,7 @@
         reload: true,
         isNew: false,
         isBangumi: false,
+        isNewBangumi: false,
         isWatchlater: false,
         repeatStart: undefined,
         repeatEnd: undefined,
@@ -304,6 +305,9 @@
                 ${this.isBangumi ? '.qd-wide-flag .bangumi-nav-right{z-index:0!important}' : ''}
                 .qd-wide-flag ${this.isBangumi ? '.bangumi-player:not(.mini-player)' : ''} .player{height:${clientHeight}px!important}
                 ${this.isBangumi ? `.qd-wide-flag #bangumi_player{height:${clientHeight}px}` : ''}
+                ${this.isNewBangumi ? `.qd-wide-flag #player_module{height:${clientHeight}px!important}` : ''}
+                ${this.isNewBangumi ? `.qd-wide-flag .plp-l{padding-top:${clientHeight}px!important}` : ''}
+                ${this.isNewBangumi ? `.qd-wide-flag .plp-r{margin-top:${clientHeight}px!important}` : ''}
                 ${this.isNew ? `.qd-wide-flag .player-wrap{margin-bottom: ${marginHeight + q('#arc_toolbar_report').parseFloat('margin-top')}px!important}` : ''}
                 ${this.isNew ? `.qd-wide-flag .r-con{margin-top: ${marginHeight}px!important}` : ''}
                 `;
@@ -333,6 +337,9 @@
                 const css = `
                 ${this.isBangumi ? '.bangumi-player:not(.mini-player)' : ''} .player{height:${clientHeight}px!important}
                 ${this.isBangumi ? `#bangumi_player{height:${clientHeight}px}` : ''}
+                ${this.isNewBangumi ? `#player_module{height:${clientHeight}px!important}` : ''}
+                ${this.isNewBangumi ? `.qd-wide-flag .plp-l{padding-top:${clientHeight}px!important}` : ''}
+                ${this.isNewBangumi ? `.qd-wide-flag .plp-r{margin-top:${clientHeight}px!important}` : ''}
                 ${this.isNew ? `.player-wrap{margin-bottom: ${marginHeight + q('#arc_toolbar_report').parseFloat('margin-top')}px!important}` : ''}
                 ${this.isNew ? `.qd-wide-flag .r-con{margin-top: ${marginHeight}px!important}` : ''}
                 `;
@@ -670,7 +677,7 @@
             }
         },
         getNewPart: function (isNext) {
-            const cur = this.isNew ? q('#multi_page .cur-list ul li.on') : this.isBangumi ? q('.episode-item.on') : q('.item.on');
+            const cur = this.isNewBangumi ? q('.ep-item.cursor') : this.isNew ? q('#multi_page .cur-list ul li.on') : this.isBangumi ? q('.episode-item.on') : q('.item.on');
             if (!cur[0]) {
                 return;
             }
@@ -796,6 +803,7 @@
         initSettingHTML: function () {
             this.isNew = q('.bilibili-player-video-btn-setting').mouseover()[0];
             this.isBangumi = window.location.href.indexOf('bangumi') >= 0;
+            this.isNewBangumi = this.isBangumi && this.isNew;
             this.isWatchlater = window.location.href.indexOf('watchlater') >= 0;
             let panel = q('.bilibili-player-video-btn-setting-panel-panel-others');
             if (!this.isNew) {
@@ -825,7 +833,6 @@
             q('#quick-do-setting-sycn-btn').on('click', () => confirm("确认同步?") && this.syncNewConfig2Old());
             this.initKeySettingHTML();
             this.initVarSettingHTML();
-            
         },
         initCheckboxHTML: function (panel, configName, options, btn) {
             if (btn) {
@@ -854,7 +861,9 @@
                 if (tips) {
                     const tipsNode = q(`#${checkboxId}-tips`);
                     let tipsTimer;
-                    checkbox.on('mouseover', () => tipsTimer = setTimeout(() => tipsNode.css('display', 'block'), 300))
+                    checkbox.on('mouseover', () => {
+                            tipsTimer = setTimeout(() => tipsNode.css('display', 'block'), 300);
+                        })
                         .on('mouseout', () => {
                             clearTimeout(tipsTimer);
                             tipsNode.css('display', 'none')
