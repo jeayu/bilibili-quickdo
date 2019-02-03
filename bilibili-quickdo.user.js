@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.9.2
+// @version      0.9.9.3
 // @description  快捷键设置,回车快速发弹幕,双击全屏,自动选择最高清画质、播放、全屏、关闭弹幕、自动转跳和自动关灯等
 // @author       jeayu
 // @license      MIT
@@ -115,6 +115,10 @@
         }
         nodes.parseFloat = function (css, index = 0) {
             return (parseFloat(this.getCss(css, index)) || 0);
+        }
+        nodes.after = function (node, index = 0) {
+            nodes.length > index && nodes[index].parentNode.insertBefore(node, nodes[index]);
+            return this;
         }
         return nodes;
     }
@@ -240,6 +244,7 @@
                         hugeWidescreen: { text: '巨幕', status: OFF, ban:['ultraWidescreen'], fn: 'hugeWidescreen', tips: '宽屏模式宽高和窗口一样'},
                         maxPlayerHeight: { text: '播放器高度和窗口一样', status: OFF, fn: 'maxPlayerHeight'},
                         danmuMask: { text: '关闭弹幕蒙版', status: OFF, fn: 'danmuMask'},
+                        bottomTitle: { text: '标题位于播放器下方', status: OFF, tips: '刷新生效' },
                     },
                     btn: '常规设置',
                 },
@@ -255,6 +260,7 @@
                         bangumiDanmuOFF: { text: '番剧自动关弹幕', status: OFF },
                         highQuality: { text: '自动最高画质', status: OFF, ban:['vipHighQuality'] },
                         vipHighQuality: { text: '自动最高画质(大会员使用)', status: OFF, ban:['highQuality'] },
+                        moreDescribe: { text: '自动展开视频简介', status: OFF },
                     },
                     btn: '播放前自动设置',
                 },
@@ -290,6 +296,14 @@
             player.addEventListener('video_media_ended', () => this.videoEndedHander());
             player.addEventListener('video_media_playing', () => this.getCheckboxSetting('lightOffWhenPlaying') === ON && !this.isLightOff() && this.lightOff());
             player.addEventListener('video_media_pause', () => this.getCheckboxSetting('lightOnWhenPause') === ON && this.isLightOff() && this.lightOff());
+        },
+        bottomTitle: function () {
+            if (this.getCheckboxSetting('bottomTitle') === OFF) {
+                return;
+            }
+            this.isNew ? q('#viewbox_report').after(q('#playerWrap')[0]) : this.isBangumi ? q('#bangumi_header').after(q('#bangumi_player')[0]) : q('#viewbox_report').after(q('#__bofqi')[0]);
+            this.setWidescreenPos();
+            this.h5Player[0].play();
         },
         hugeWidescreen: function () {
             const styleNode = q('#qd-hugeWidescreen')[0];
@@ -643,6 +657,7 @@
             if (this.reload && this.getCheckboxSetting('jump') === ON) {
                 this.jump();
             }
+            !this.isNew && this.bottomTitle();
             this.oldControlHide();
         },
         autoHandler: function () {
@@ -801,6 +816,9 @@
             q('head').append(`<style ${id} type="text/css">${css}</style>`);
         },
         initSettingHTML: function () {
+            if (q('#quick-do-setting-panel')[0]) {
+                return;
+            }
             this.isNew = q('.bilibili-player-video-btn-setting').mouseover()[0];
             this.isNew && this.newControlHide();
             this.isBangumi = window.location.href.indexOf('bangumi') >= 0;
@@ -1059,6 +1077,11 @@
                     } else if (this.repeatEnd && this.repeatStart && target.hasClass('bilibili-player-video-time-now')
                                && this.repeatEnd <= this.h5Player[0].currentTime) {
                         this.h5Player[0].currentTime = this.repeatStart;
+                    } else if (mutation.target.id && mutation.target.id == 'v_desc') {
+                        if (this.getCheckboxSetting('moreDescribe') === ON) {
+                            q('div [report-id="abstract_spread"]').click();
+                        }
+                        this.bottomTitle();
                     }
                 });
             }).observe(document.body, {
