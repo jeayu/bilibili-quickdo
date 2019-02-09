@@ -234,19 +234,24 @@
                         autoHint: { text: '自动操作提示', status: ON, tips: '自动关闭弹幕时的提示' },
                         reloadPart: { text: '换P重新加载', status: OFF, tips: '脚本已自动下一P.</br>勾选: 屏幕回到自动设置的模式.</br>不勾选: 屏幕和上一P一样,</br>番剧下一P不是续集换P会无效.' },
                         danmuColor: { text: '统一弹幕颜色', status: OFF, fn: 'initDanmuStyle' },
+                        globalHotKey: { text: '默认快捷键设置全局', status: OFF, tips: '上下左右空格不会滚动页面' },
+                        danmuMask: { text: '关闭弹幕蒙版', status: OFF, fn: 'danmuMask'},
+                    },
+                    btn: '常规设置',
+                },
+                playerCheckbox: {
+                    options: {
                         hideSenderBar: { text: '隐藏弹幕栏', status: OFF, fn: 'hideOrShowSenderBar', tips: '发弹幕快捷键可显示' },
                         widescreenScroll2Top: { text: '宽屏时回到顶部', status: OFF, ban:['widescreenSetOnTop'], fn: 'setWidescreenPos' },
                         widescreenSetOnTop: { text: '宽屏时播放器置顶部', status: OFF, ban:['widescreenScroll2Top'], fn: 'setWidescreenPos' },
-                        globalHotKey: { text: '默认快捷键设置全局', status: OFF, tips: '上下左右空格不会滚动页面' },
                         lightOffWhenPlaying: { text: '播放时自动关灯', status: OFF, },
                         lightOnWhenPause: { text: '暂停时自动开灯', status: OFF, },
                         ultraWidescreen: { text: '超宽屏', status: OFF, ban:['hugeWidescreen'], fn: 'ultraWidescreen', tips: '宽屏模式宽度和窗口一样'},
                         hugeWidescreen: { text: '巨幕', status: OFF, ban:['ultraWidescreen'], fn: 'hugeWidescreen', tips: '宽屏模式宽高和窗口一样'},
                         maxPlayerHeight: { text: '播放器高度和窗口一样', status: OFF, fn: 'maxPlayerHeight'},
-                        danmuMask: { text: '关闭弹幕蒙版', status: OFF, fn: 'danmuMask'},
                         bottomTitle: { text: '标题位于播放器下方', status: OFF, tips: '刷新生效' },
                     },
-                    btn: '常规设置',
+                    btn: '播放器设置',
                 },
                 startCheckbox: {
                     options: {
@@ -261,6 +266,7 @@
                         highQuality: { text: '自动最高画质', status: OFF, ban:['vipHighQuality'] },
                         vipHighQuality: { text: '自动最高画质(大会员使用)', status: OFF, ban:['highQuality'] },
                         moreDescribe: { text: '自动展开视频简介', status: OFF },
+                        danmuList: { text: '自动展开新版弹幕列表', status: OFF },
                     },
                     btn: '播放前自动设置',
                 },
@@ -288,26 +294,46 @@
             player.addEventListener('video_resize', () => {
                 this.hideSenderBar();
                 q('body').toggleClass('qd-wide-flag', this.isWidescreen());
-                setTimeout(() => this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos(), this.isNew ? 0 : 100);
-                this.ultraWidescreen();
-                this.maxPlayerHeight();
-                this.hugeWidescreen();
+                this.initPlayerStyle();
+                setTimeout(() => this.fixVideoResize(), 100);
             });
             player.addEventListener('video_media_ended', () => this.videoEndedHander());
             player.addEventListener('video_media_playing', () => this.getCheckboxSetting('lightOffWhenPlaying') === ON && !this.isLightOff() && this.lightOff());
             player.addEventListener('video_media_pause', () => this.getCheckboxSetting('lightOnWhenPause') === ON && this.isLightOff() && this.lightOff());
         },
+        fixVideoResize: function () {
+            this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos();
+            q('#playerWrap').css('height', q('#bofqi').getCss('height'));
+        },
+        initPlayerStyle: function () {
+            this.ultraWidescreen();
+            this.maxPlayerHeight();
+            this.hugeWidescreen();
+        },
         bottomTitle: function () {
-            if (this.getCheckboxSetting('bottomTitle') === OFF) {
+            if (!this.reload || this.getCheckboxSetting('bottomTitle') === OFF) {
                 return;
             }
+            const paused = this.h5Player[0].paused;
             this.isNew ? q('#viewbox_report').after(q('#playerWrap')[0]) : this.isBangumi ? q('#bangumi_header').after(q('#bangumi_player')[0]) : q('#viewbox_report').after(q('#__bofqi')[0]);
             this.setWidescreenPos();
-            this.h5Player[0].play();
+            paused || this.h5Player[0].play();
+            this.rConCss();
+        },
+        rConCss: function () {
+            this.removeStyle('#qd-rCon');
+            if (!this.isNew || q('.mini-player')[0]) {
+                return;
+            }
+            if (this.getCheckboxSetting('bottomTitle') === ON ) {
+                const top = this.getCheckboxSetting('bottomTitle') === ON ? q('.player').parseFloat('height') : q('.player').parseFloat('height') + q('#v_upinfo').parseFloat('margin-bottom') + q('#v_upinfo').parseFloat('height');
+                const css = `
+                .qd-wide-flag .r-con{margin-top:${top}px!important}`;
+                this.addStyle(css, 'qd-rCon');
+            }
         },
         hugeWidescreen: function () {
-            const styleNode = q('#qd-hugeWidescreen')[0];
-            styleNode && styleNode.parentNode.removeChild(styleNode);
+            this.removeStyle('#qd-hugeWidescreen');
             if (this.getCheckboxSetting('hugeWidescreen') === ON && !q('.mini-player')[0]) {
                 const clientWidth = document.body.clientWidth;
                 const marginLeft = q('#bofqi').offset().left;
@@ -323,14 +349,13 @@
                 ${this.isNewBangumi ? `.qd-wide-flag .plp-l{padding-top:${clientHeight}px!important}` : ''}
                 ${this.isNewBangumi ? `.qd-wide-flag .plp-r{margin-top:${clientHeight}px!important}` : ''}
                 ${this.isNew ? `.qd-wide-flag .player-wrap{margin-bottom: ${marginHeight + q('#arc_toolbar_report').parseFloat('margin-top')}px!important}` : ''}
-                ${this.isNew ? `.qd-wide-flag .r-con{margin-top: ${marginHeight}px!important}` : ''}
                 `;
                 this.addStyle(css, 'qd-hugeWidescreen');
             }
+            this.rConCss();
         },
         ultraWidescreen: function () {
-            const styleNode = q('#qd-ultraWidescreen')[0];
-            styleNode && styleNode.parentNode.removeChild(styleNode);
+            this.removeStyle('#qd-ultraWidescreen');
             if (this.getCheckboxSetting('ultraWidescreen') === ON && !q('.mini-player')[0]) {
                 const clientWidth = document.body.clientWidth;
                 const marginLeft = q('#bofqi').offset().left;
@@ -341,10 +366,10 @@
                 `;
                 this.addStyle(css, 'qd-ultraWidescreen');
             }
+            this.rConCss();
         },
         maxPlayerHeight: function () {
-            const styleNode = q('#qd-maxPlayerHeight')[0];
-            styleNode && styleNode.parentNode.removeChild(styleNode);
+            this.removeStyle('#qd-maxPlayerHeight');
             if (this.getCheckboxSetting('maxPlayerHeight') === ON && !q('.mini-player')[0]) {
                 const clientHeight = document.body.clientHeight;
                 const marginHeight = clientHeight - q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).parseFloat('height');
@@ -355,10 +380,10 @@
                 ${this.isNewBangumi ? `.qd-wide-flag .plp-l{padding-top:${clientHeight}px!important}` : ''}
                 ${this.isNewBangumi ? `.qd-wide-flag .plp-r{margin-top:${clientHeight}px!important}` : ''}
                 ${this.isNew ? `.player-wrap{margin-bottom: ${marginHeight + q('#arc_toolbar_report').parseFloat('margin-top')}px!important}` : ''}
-                ${this.isNew ? `.qd-wide-flag .r-con{margin-top: ${marginHeight}px!important}` : ''}
                 `;
                 this.addStyle(css, 'qd-maxPlayerHeight');
             }
+            this.rConCss();
         },
         danmuMask: function () {
             const styleNode = q('#qd-danmuMask')[0];
@@ -629,6 +654,12 @@
         addProgress: function () {
             this.h5Player[0].currentTime += this.getVarSetting('videoProgress');
         },
+        moreDescribe: function () {
+            this.getCheckboxSetting('moreDescribe') === ON && q('div [report-id="abstract_spread"]').click();
+        },
+        danmuList: function () {
+            this.getCheckboxSetting('danmuList') === ON && q('.bui-collapse-wrap-folded .bui-collapse-arrow-text').click();
+        },
         keyHandler: function (e) {
             const {keyCode, ctrlKey, shiftKey, altKey} = e;
             if (ctrlKey || shiftKey || altKey) {
@@ -657,6 +688,8 @@
             if (this.reload && this.getCheckboxSetting('jump') === ON) {
                 this.jump();
             }
+            this.moreDescribe();
+            this.danmuList();
             !this.isNew && this.bottomTitle();
             this.oldControlHide();
         },
@@ -814,6 +847,10 @@
         addStyle: function (css, id) {
             id = id ? `id=${id}` : '';
             q('head').append(`<style ${id} type="text/css">${css}</style>`);
+        },
+        removeStyle: function (styleId) {
+            const styleNode = q(styleId)[0];
+            styleNode && styleNode.parentNode.removeChild(styleNode);
         },
         initSettingHTML: function () {
             if (q('#quick-do-setting-panel')[0]) {
@@ -1077,11 +1114,14 @@
                     } else if (this.repeatEnd && this.repeatStart && target.hasClass('bilibili-player-video-time-now')
                                && this.repeatEnd <= this.h5Player[0].currentTime) {
                         this.h5Player[0].currentTime = this.repeatStart;
-                    } else if (mutation.target.id && mutation.target.id == 'v_desc') {
-                        if (this.getCheckboxSetting('moreDescribe') === ON) {
-                            q('div [report-id="abstract_spread"]').click();
+                    } else if (mutation.target.id) {
+                        if (mutation.target.id == 'v_desc') {
+                            this.moreDescribe();
+                        } else if (mutation.target.id == 'slide_ad') {
+                            this.danmuList();
+                            this.initPlayerStyle();
+                            this.bottomTitle();
                         }
-                        this.bottomTitle();
                     }
                 });
             }).observe(document.body, {
