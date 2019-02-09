@@ -71,10 +71,10 @@
             return flag ? this.addClass(className, index) : this.removeClass(className, index);
         }
         nodes.next = function (index = 0) {
-            return nodes.length > index && nodes[index].nextElementSibling ? q(nodes[index].nextElementSibling) : [undefined];
+            return nodes.length > index && nodes[index].nextElementSibling ? q(nodes[index].nextElementSibling) : [];
         }
         nodes.prev = function (index = 0) {
-            return nodes.length > index && nodes[index].previousElementSibling ? q(nodes[index].previousElementSibling) : [undefined];
+            return nodes.length > index && nodes[index].previousElementSibling ? q(nodes[index].previousElementSibling) : [];
         }
         nodes.trigger = function (event, index = 0) {
             if (nodes.length > index) {
@@ -117,7 +117,7 @@
             return (parseFloat(this.getCss(css, index)) || 0);
         }
         nodes.after = function (node, index = 0) {
-            nodes.length > index && nodes[index].parentNode.insertBefore(node, nodes[index]);
+            nodes.length > index && node instanceof Node && nodes[index].parentNode.insertBefore(node, nodes[index]);
             return this;
         }
         return nodes;
@@ -250,6 +250,7 @@
                         hugeWidescreen: { text: '巨幕', status: OFF, ban:['ultraWidescreen'], fn: 'hugeWidescreen', tips: '宽屏模式宽高和窗口一样'},
                         maxPlayerHeight: { text: '播放器高度和窗口一样', status: OFF, fn: 'maxPlayerHeight'},
                         bottomTitle: { text: '标题位于播放器下方', status: OFF, tips: '刷新生效' },
+                        danmukuBoxAfterMultiPage: { text: '新版弹幕列表在视频选集下方', status: OFF, tips: '刷新生效' },
                     },
                     btn: '播放器设置',
                 },
@@ -319,6 +320,12 @@
             this.setWidescreenPos();
             paused || this.h5Player[0].play();
             this.rConCss();
+        },
+        danmukuBoxAfterMultiPage: function () {
+            if (!this.reload || !this.isNew) {
+                return;
+            }
+            this.getCheckboxSetting('danmukuBoxAfterMultiPage') === ON && q('#danmukuBox').after(q('#multi_page')[0]);
         },
         rConCss: function () {
             this.removeStyle('#qd-rCon');
@@ -1120,6 +1127,7 @@
                         } else if (mutation.target.id == 'slide_ad') {
                             this.danmuList();
                             this.initPlayerStyle();
+                            this.danmukuBoxAfterMultiPage();
                             this.bottomTitle();
                         }
                     }
