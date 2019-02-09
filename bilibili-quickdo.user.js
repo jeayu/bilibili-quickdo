@@ -246,9 +246,9 @@
                         widescreenSetOnTop: { text: '宽屏时播放器置顶部', status: OFF, ban:['widescreenScroll2Top'], fn: 'setWidescreenPos' },
                         lightOffWhenPlaying: { text: '播放时自动关灯', status: OFF, },
                         lightOnWhenPause: { text: '暂停时自动开灯', status: OFF, },
-                        ultraWidescreen: { text: '超宽屏', status: OFF, ban:['hugeWidescreen'], fn: 'ultraWidescreen', tips: '宽屏模式宽度和窗口一样'},
-                        hugeWidescreen: { text: '巨幕', status: OFF, ban:['ultraWidescreen'], fn: 'hugeWidescreen', tips: '宽屏模式宽高和窗口一样'},
-                        maxPlayerHeight: { text: '播放器高度和窗口一样', status: OFF, fn: 'maxPlayerHeight'},
+                        ultraWidescreen: { text: '超宽屏', status: OFF, ban:['customUltraWidescreenHeight'], fn: 'ultraWidescreen', tips: '宽屏模式宽度和窗口一样'},
+                        customUltraWidescreenHeight: { text: '自定义超宽屏高度', status: OFF, ban:['ultraWidescreen'], fn: 'customUltraWidescreenHeight', tips: '最大高度和窗口一样'},
+                        customPlayerHeight: { text: '自定义播放器高度', status: OFF, fn: 'customPlayerHeight', tips: '最大高度和窗口一样' },
                         bottomTitle: { text: '标题位于播放器下方', status: OFF, tips: '刷新生效' },
                         danmukuBoxAfterMultiPage: { text: '新版弹幕列表在视频选集下方', status: OFF, tips: '刷新生效' },
                     },
@@ -288,6 +288,8 @@
                 volume: { text: '音量调整百分比', value: 1 },
                 videoProgress: { text: '快进/快退调整秒数', value: 1 },
                 rotationDeg: { text: '旋转角度', value: 90 },
+                ultraWidescreenHeightPercent: { text: '超宽屏高度百分比', value: 100 },
+                playerHeightPercent: { text: '播放器高度百分比', value: 100 },
             },
         },
         bindPlayerEvent: function () {
@@ -308,8 +310,8 @@
         },
         initPlayerStyle: function () {
             this.ultraWidescreen();
-            this.maxPlayerHeight();
-            this.hugeWidescreen();
+            this.customPlayerHeight();
+            this.customUltraWidescreenHeight();
         },
         bottomTitle: function () {
             if (!this.reload || this.getCheckboxSetting('bottomTitle') === OFF) {
@@ -339,12 +341,12 @@
                 this.addStyle(css, 'qd-rCon');
             }
         },
-        hugeWidescreen: function () {
-            this.removeStyle('#qd-hugeWidescreen');
-            if (this.getCheckboxSetting('hugeWidescreen') === ON && !q('.mini-player')[0]) {
+        customUltraWidescreenHeight: function () {
+            this.removeStyle('#qd-customUltraWidescreenHeight');
+            if (this.getCheckboxSetting('customUltraWidescreenHeight') === ON && !q('.mini-player')[0]) {
                 const clientWidth = document.body.clientWidth;
                 const marginLeft = q('#bofqi').offset().left;
-                const clientHeight = document.body.clientHeight;
+                const clientHeight = document.body.clientHeight * Math.min(this.getVarSetting('ultraWidescreenHeightPercent') / 100, 1);
                 const marginHeight = clientHeight - q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).parseFloat('height');
                 const css = `
                 .qd-wide-flag .mode-widescreen{width:${clientWidth}px!important;margin-left:-${marginLeft}px!important}
@@ -356,8 +358,9 @@
                 ${this.isNewBangumi ? `.qd-wide-flag .plp-l{padding-top:${clientHeight}px!important}` : ''}
                 ${this.isNewBangumi ? `.qd-wide-flag .plp-r{margin-top:${clientHeight}px!important}` : ''}
                 ${this.isNew ? `.qd-wide-flag .player-wrap{margin-bottom: ${marginHeight + q('#arc_toolbar_report').parseFloat('margin-top')}px!important}` : ''}
+                .bangumi-player{height:auto!important}
                 `;
-                this.addStyle(css, 'qd-hugeWidescreen');
+                this.addStyle(css, 'qd-customUltraWidescreenHeight');
             }
             this.rConCss();
         },
@@ -375,10 +378,10 @@
             }
             this.rConCss();
         },
-        maxPlayerHeight: function () {
-            this.removeStyle('#qd-maxPlayerHeight');
-            if (this.getCheckboxSetting('maxPlayerHeight') === ON && !q('.mini-player')[0]) {
-                const clientHeight = document.body.clientHeight;
+        customPlayerHeight: function () {
+            this.removeStyle('#qd-customPlayerHeight');
+            if (this.getCheckboxSetting('customPlayerHeight') === ON && !q('.mini-player')[0]) {
+                const clientHeight = document.body.clientHeight * Math.min(this.getVarSetting('playerHeightPercent') / 100, 1);
                 const marginHeight = clientHeight - q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).parseFloat('height');
                 const css = `
                 ${this.isBangumi ? '.bangumi-player:not(.mini-player)' : ''} .player{height:${clientHeight}px!important}
@@ -387,8 +390,9 @@
                 ${this.isNewBangumi ? `.qd-wide-flag .plp-l{padding-top:${clientHeight}px!important}` : ''}
                 ${this.isNewBangumi ? `.qd-wide-flag .plp-r{margin-top:${clientHeight}px!important}` : ''}
                 ${this.isNew ? `.player-wrap{margin-bottom: ${marginHeight + q('#arc_toolbar_report').parseFloat('margin-top')}px!important}` : ''}
+                .bangumi-player{height:auto!important}
                 `;
-                this.addStyle(css, 'qd-maxPlayerHeight');
+                this.addStyle(css, 'qd-customPlayerHeight');
             }
             this.rConCss();
         },
@@ -919,7 +923,7 @@
                     gmvalue === ON && ban && ban.forEach((k,i) => this.getCheckboxSetting(k) === ON && q(`#cb-${k}`).click());
                     !this.isNew && q(`#${checkboxId}-lable`).toggleClass('bpui-state-active', gmvalue === ON);
                     fn && this[fn](gmvalue === ON);
-                });
+                }).on('dblclick', e => e.stopPropagation());
                 fn && this[fn](checked);
                 if (tips) {
                     const tipsNode = q(`#${checkboxId}-tips`);
@@ -1039,7 +1043,7 @@
                 varInput.on('blur', () => this.saveVarSetting(key, varInput.val()) || varInput.val(this.getVarSetting(key)) ).on('click', e => {
                     varInput.select();
                     e.preventDefault();
-                });
+                }).on('keydown', e => e.stopPropagation());
             }
         },
         getVarSettingHTML: function (inputId, text, value) {
