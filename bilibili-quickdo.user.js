@@ -61,7 +61,7 @@
             return nodes.length > index && nodes[index].className.match && nodes[index].className.match(new RegExp(`(\\s|^)${className}(\\s|$)`));
         }
         nodes.append = function (text, where = 'beforeend', index = 0) {
-            nodes[index].insertAdjacentHTML(where, text);
+            nodes.length > index && nodes[index].insertAdjacentHTML(where, text);
             return this;
         }
         nodes.find = function (name, index = 0) {
@@ -317,7 +317,7 @@
             if (!this.reload || this.getCheckboxSetting('bottomTitle') === OFF) {
                 return;
             }
-            const paused = this.h5Player[0].paused;
+            const paused = this.h5Player && this.h5Player[0] ? this.h5Player[0].paused : true;
             this.isNew ? q('#viewbox_report').after(q('#playerWrap')[0]) : this.isBangumi ? q('#bangumi_header').after(q('#bangumi_player')[0]) : q('#viewbox_report').after(q('#__bofqi')[0]);
             this.setWidescreenPos();
             paused || this.h5Player[0].play();
