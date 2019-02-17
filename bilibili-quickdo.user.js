@@ -232,7 +232,7 @@
                         dblclick: { text: '双击全屏', status: ON },
                         hint: { text: '快捷键提示', status: ON },
                         autoHint: { text: '自动操作提示', status: ON, tips: '自动关闭弹幕时的提示' },
-                        reloadPart: { text: '换P重新加载', status: OFF, tips: '脚本已自动下一P.</br>勾选: 屏幕回到自动设置的模式.</br>不勾选: 屏幕和上一P一样,</br>番剧下一P不是续集换P会无效.' },
+                        reloadPart: { text: '换P重新加载', status: OFF, tips: '使用快捷键时生效.</br>勾选: 屏幕回到自动设置的模式.</br>不勾选: 屏幕和上一P一样,</br>番剧下一P不是续集换P会无效.' },
                         danmuColor: { text: '统一弹幕颜色', status: OFF, fn: 'initDanmuStyle' },
                         globalHotKey: { text: '默认快捷键设置全局', status: OFF, tips: '上下左右空格不会滚动页面' },
                         danmuMask: { text: '关闭弹幕蒙版', status: OFF, fn: 'danmuMask'},
@@ -292,7 +292,7 @@
                 playerHeightPercent: { text: '播放器高度百分比', value: 100 },
             },
         },
-        bindPlayerEvent: function () {
+        bindPlayerEvent() {
             player.addEventListener('dblclick', () => this.getCheckboxSetting('dblclick') === ON && this.fullscreen());
             player.addEventListener('video_resize', () => {
                 this.hideSenderBar();
@@ -304,16 +304,16 @@
             player.addEventListener('video_media_playing', () => this.getCheckboxSetting('lightOffWhenPlaying') === ON && !this.isLightOff() && this.lightOff());
             player.addEventListener('video_media_pause', () => this.getCheckboxSetting('lightOnWhenPause') === ON && this.isLightOff() && this.lightOff());
         },
-        fixVideoResize: function () {
+        fixVideoResize() {
             this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos();
             q('#playerWrap').css('height', q('#bofqi').getCss('height'));
         },
-        initPlayerStyle: function () {
+        initPlayerStyle() {
             this.ultraWidescreen();
             this.customPlayerHeight();
             this.customUltraWidescreenHeight();
         },
-        bottomTitle: function () {
+        bottomTitle() {
             if (!this.reload || this.getCheckboxSetting('bottomTitle') === OFF) {
                 return;
             }
@@ -323,13 +323,13 @@
             paused || this.h5Player[0].play();
             this.rConCss();
         },
-        danmukuBoxAfterMultiPage: function () {
+        danmukuBoxAfterMultiPage() {
             if (!this.reload || !this.isNew) {
                 return;
             }
             this.getCheckboxSetting('danmukuBoxAfterMultiPage') === ON && q('#danmukuBox').after(q('#multi_page')[0]);
         },
-        rConCss: function () {
+        rConCss() {
             this.removeStyle('#qd-rCon');
             if (!this.isNew || q('.mini-player')[0]) {
                 return;
@@ -341,7 +341,7 @@
                 this.addStyle(css, 'qd-rCon');
             }
         },
-        customUltraWidescreenHeight: function () {
+        customUltraWidescreenHeight() {
             this.removeStyle('#qd-customUltraWidescreenHeight');
             if (this.getCheckboxSetting('customUltraWidescreenHeight') === ON && !q('.mini-player')[0]) {
                 const clientWidth = document.body.clientWidth;
@@ -364,7 +364,7 @@
             }
             this.rConCss();
         },
-        ultraWidescreen: function () {
+        ultraWidescreen() {
             this.removeStyle('#qd-ultraWidescreen');
             if (this.getCheckboxSetting('ultraWidescreen') === ON && !q('.mini-player')[0]) {
                 const clientWidth = document.body.clientWidth;
@@ -378,7 +378,7 @@
             }
             this.rConCss();
         },
-        customPlayerHeight: function () {
+        customPlayerHeight() {
             this.removeStyle('#qd-customPlayerHeight');
             if (this.getCheckboxSetting('customPlayerHeight') === ON && !q('.mini-player')[0]) {
                 const clientHeight = document.body.clientHeight * Math.min(this.getVarSetting('playerHeightPercent') / 100, 1);
@@ -396,7 +396,7 @@
             }
             this.rConCss();
         },
-        danmuMask: function () {
+        danmuMask() {
             const styleNode = q('#qd-danmuMask')[0];
             styleNode && styleNode.parentNode.removeChild(styleNode);
             if (this.getCheckboxSetting('danmuMask') === ON) {
@@ -404,7 +404,7 @@
                 this.addStyle(css, 'qd-danmuMask');
             }
         },
-        initHintStyle: function () {
+        initHintStyle() {
             if (q('.bilibili-player-infoHint')[0]) {
                 return;
             }
@@ -417,35 +417,35 @@
             this.addStyle(css);
             q('div.bilibili-player-video-wrap').append(html);
         },
-        getKeyCode: function (type) {
+        getKeyCode(type) {
             return this.keyCode[this.getQuickDoKey(type)];
         },
-        getQuickDoKey: function (key, newVersion=this.isNew) {
+        getQuickDoKey(key, newVersion=this.isNew) {
             return GM_getValue(`quickDo-${this.getVersionKey(key, newVersion)}`);
         },
-        saveQuickDoKey: function (key, value, newVersion=this.isNew) {
+        saveQuickDoKey(key, value, newVersion=this.isNew) {
             GM_setValue(`quickDo-${this.getVersionKey(key, newVersion)}`, value.toLowerCase());
         },
-        getVarSetting: function (key, newVersion=this.isNew) {
+        getVarSetting(key, newVersion=this.isNew) {
             return parseFloat(GM_getValue(`quickDo-var-${this.getVersionKey(key, newVersion)}`)) || this.config.variable[key].value;
         },
-        saveVarSetting: function (key, value, newVersion=this.isNew) {
+        saveVarSetting(key, value, newVersion=this.isNew) {
             let v = this.config.variable[key].value;
             if ((v = parseFloat(value)) && v > 0) {
                 GM_setValue(`quickDo-var-${this.getVersionKey(key, newVersion)}`, v);
                 return true;
             }
         },
-        getVersionKey: function (key, newVersion=this.isNew) {
+        getVersionKey(key, newVersion=this.isNew) {
             return newVersion ? key : `old-${key}`;
         },
-        getCheckboxSetting: function (key, newVersion=this.isNew) {
+        getCheckboxSetting(key, newVersion=this.isNew) {
             return GM_getValue(this.getVersionKey(key, newVersion));
         },
-        saveCheckboxSetting: function (key, value, newVersion=this.isNew) {
+        saveCheckboxSetting(key, value, newVersion=this.isNew) {
             return GM_setValue(this.getVersionKey(key, newVersion), value);
         },
-        syncNewConfig2Old: function () {
+        syncNewConfig2Old() {
             Object.keys(this.config.quickDo).forEach(key => this.saveQuickDoKey(key, this.getQuickDoKey(key, true), false));
             Object.keys(this.config.variable).forEach(key => this.saveVarSetting(key, this.getVarSetting(key, true), false));
             Object.entries(this.config.checkboxes).forEach(([configName, {
@@ -453,7 +453,7 @@
             }]) => Object.keys(options).forEach(key => this.saveCheckboxSetting(key, this.getCheckboxSetting(key, true), false)));
             this.isNew ? this.showHint('同步完成') : location.reload();
         },
-        bindKeydown: function () {
+        bindKeydown() {
             this.keydownFn = this.keydownFn || (e=> !q('input:focus, textarea:focus').length && this.keyHandler(e));
             q(document).on('keydown', this.keydownFn);
             q('input.bilibili-player-video-time-seek').on('keydown', e => {
@@ -479,7 +479,7 @@
             });
             this.bindPlayerEvent();
         },
-        bindDanmuInputKeydown: function () {
+        bindDanmuInputKeydown() {
             q('input.bilibili-player-video-danmaku-input').on('keydown', e => {
                 e.keyCode === this.keyCode.enter && this.hideDanmuInput();
             });
@@ -492,11 +492,11 @@
             this.h5Player[0].playbackRate = Math.max(this.h5Player[0].playbackRate - this.getVarSetting('speed'), this.getVarSetting('minSpeed'));
             this.showHint(`${this.h5Player[0].playbackRate} X`);
         },
-        resetSpeed: function () {
+        resetSpeed() {
             this.h5Player[0].playbackRate = 1;
             this.showHint(`${this.h5Player[0].playbackRate} X`);
         },
-        fullscreen: function () {
+        fullscreen() {
             q('.bilibili-player-video-btn-fullscreen').click();
             if (q('.bilibili-player-video-btn-setting-panel-others-content-lightoff input')[0]) {
                 q('body').hasClass('player-mode-blackmask')
@@ -504,41 +504,41 @@
                 : q('#heimu').css('display', '');
             }
         },
-        isFullScreen: function () {
+        isFullScreen() {
             return q('#bilibiliPlayer').hasClass('mode-fullscreen');
         },
-        isWebFullscreen: function () {
+        isWebFullscreen() {
             return q('#bilibiliPlayer').hasClass('mode-webfullscreen');
         },
-        isWidescreen: function () {
+        isWidescreen() {
             return q('#bilibiliPlayer').hasClass('mode-widescreen');
         },
-        webFullscreen: function () {
+        webFullscreen() {
             this.isFullScreen() ? this.playerMode(WEBFULLSCREEN) : q('.bilibili-player-video-web-fullscreen').click();
         },
-        widescreen: function () {
+        widescreen() {
             this.isFullScreen() ? this.playerMode(WIDESCREEN) : q('.bilibili-player-video-btn-widescreen').click();
             this.setWidescreenPos();
         },
-        playerMode: function (mode) {
+        playerMode(mode) {
             player.mode(mode);
             mode === WIDESCREEN && setTimeout(() => this.setWidescreenPos(), 100);
             q('body').toggleClass('qd-wide-flag', this.isWidescreen());
         },
-        setWidescreenPos: function () {
+        setWidescreenPos() {
             if (!this.isWidescreen()) {
                 return;
             }
             this.getCheckboxSetting('widescreenScroll2Top') === ON ? this.scroll2Top() : this.getCheckboxSetting('widescreenSetOnTop') === ON && this.playerSetOnTop();
         },
-        scroll2Top: function () {
+        scroll2Top() {
             window.scrollTo(0, 0);
         },
-        playerSetOnTop: function () {
+        playerSetOnTop() {
             this.scroll2Top();
             window.scrollTo(0, q('#bofqi').offset().top);
         },
-        danmu: function (auto = false) {
+        danmu(auto = false) {
             if (this.isNew) {
                 const newDanmuBtn = q('.bilibili-player-video-danmaku-switch input').mouseover();
                 this.showHint(q('.choose_danmaku').text(), auto);
@@ -549,7 +549,7 @@
                 this.showHint(hint, auto);
             }
         },
-        danmuType: function (type) {
+        danmuType(type) {
             const btn = this.isNew ? q('.bilibili-player-video-danmaku-setting') : q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
             const danmuOpt = btn.mouseover().mouseout().find(`div[ftype="${type}"]`);
             if (danmuOpt) {
@@ -561,16 +561,16 @@
                 }
             }
         },
-        danmuTop: function () {
+        danmuTop() {
             this.danmuType('top');
         },
-        danmuBottom: function () {
+        danmuBottom() {
             this.danmuType('bottom');
         },
-        danmuScroll: function () {
+        danmuScroll() {
             this.danmuType('scroll');
         },
-        danmuPrevent: function () {
+        danmuPrevent() {
             const e = this.isNew ? q('.bilibili-player-video-danmaku-setting').mouseover().mouseout().find('.bilibili-player-video-danmaku-setting-left-preventshade-box input') :
                 q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]').mouseover().mouseout().find('input[name="ctlbar_danmuku_prevent"]').next();
             const text = e.click().mouseout().text().length > 0 ? e.text() : e.next().text();
@@ -580,20 +580,20 @@
                 this.showHint(`关闭${text}`);
             }
         },
-        playAndPause: function () {
+        playAndPause() {
             q('div.bilibili-player-video-control div.bilibili-player-video-btn.bilibili-player-video-btn-start').click();
         },
-        mirror: function () {
+        mirror() {
             if (this.getTransformCss(this.h5Player) != 'none') {
                 this.setH5PlayerRransform('');
             } else {
                 this.setH5PlayerRransform('rotateY(180deg)');
             }
         },
-        isLightOff: function () {
+        isLightOff() {
             return q('#heimu').getCss('display') === 'block';
         },
-        lightOff: function () {
+        lightOff() {
             if (!q('.bilibili-player-video-btn-setting-panel-others-content-lightoff input').click()[0]) {
                 if (!q('#heimu').getCss('display')) {
                     q('body').append('<div id="heimu" style="display: block;"></div>');
@@ -605,73 +605,73 @@
                 q('#bilibiliPlayer').toggleClass('mode-light-off', this.isLightOff());
             }
         },
-        seek: function () {
+        seek() {
             this.oldControlShow() || this.newControlShow();
             this.triggerSleep(q('.bilibili-player-video-time-wrap').mouseover())
                 .then(() => q('input.bilibili-player-video-time-seek').select()).catch(() => {});
             return true;
         },
-        mute: function () {
+        mute() {
             q('.bilibili-player-iconfont-volume').click();
             this.h5Player[0].volume == 0 ? this.showHint(`静音`) : this.showHint(`取消静音`);
         },
-        jump: function () {
+        jump() {
             q('.bilibili-player-video-toast-item-jump').click();
         },
-        jumpContent: function () {
+        jumpContent() {
             q('.bilibili-player-electric-panel-jump-content').click()
         },
-        rotateRight: function () {
+        rotateRight() {
             this.h5PlayerRotate(1);
         },
-        rotateLeft: function () {
+        rotateLeft() {
             this.h5PlayerRotate(-1);
         },
-        download: function () {
+        download() {
             window.open(player.getPlayurl());
         },
-        nextPart: function () {
+        nextPart() {
             this.partHandler(true);
         },
-        prevPart: function () {
+        prevPart() {
             this.partHandler(false);
         },
-        focusPlayer: function () {
+        focusPlayer() {
             q('.bilibili-player-video-control').click();
         },
-        setRepeatStart: function () {
+        setRepeatStart() {
             this.repeatStart = this.h5Player[0].currentTime;
             this.showHint(`起点 ${q('.bilibili-player-video-time-now').text()}`)
         },
-        setRepeatEnd: function () {
+        setRepeatEnd() {
             this.repeatEnd = this.h5Player[0].currentTime;
             this.showHint(`终点 ${q('.bilibili-player-video-time-now').text()}`)
         },
-        resetRepeat: function () {
+        resetRepeat() {
             this.repeatEnd = this.repeatStart = undefined;
             this.showHint(`清除循环点`)
         },
-        subVolume: function () {
+        subVolume() {
             this.h5Player[0].volume = Math.max(this.h5Player[0].volume - (this.getVarSetting('volume') / 100), 0);
             this.showHint(`音量 ${this.h5Player[0].volume * 100 | 0}%`)
         },
-        addVolume: function () {
+        addVolume() {
             this.h5Player[0].volume = Math.min(this.h5Player[0].volume + (this.getVarSetting('volume') / 100), 1);
             this.showHint(`音量 ${this.h5Player[0].volume * 100 | 0}%`)
         },
-        subProgress: function () {
+        subProgress() {
             this.h5Player[0].currentTime -= this.getVarSetting('videoProgress');
         },
-        addProgress: function () {
+        addProgress() {
             this.h5Player[0].currentTime += this.getVarSetting('videoProgress');
         },
-        moreDescribe: function () {
+        moreDescribe() {
             this.getCheckboxSetting('moreDescribe') === ON && q('div [report-id="abstract_spread"]').click();
         },
-        danmuList: function () {
+        danmuList() {
             this.getCheckboxSetting('danmuList') === ON && q('.bui-collapse-wrap-folded .bui-collapse-arrow-text').click();
         },
-        keyHandler: function (e) {
+        keyHandler(e) {
             const {keyCode, ctrlKey, shiftKey, altKey} = e;
             if (ctrlKey || shiftKey || altKey) {
                 return;
@@ -689,7 +689,7 @@
                 this.setVideoCurrentTime(this.h5Player[0].duration / 10 * (keyCode - this.keyCode['0']));
             e.defaultPrevented || this.oldControlHide();
         },
-        autoHandlerForStage1: function () {
+        autoHandlerForStage1() {
             if (this.getCheckboxSetting('highQuality') === ON || this.getCheckboxSetting('vipHighQuality') === ON) {
                 q('.bilibili-player-video-quality-menu').mouseover().mouseout();
                 const btn = this.isNew ? q('.bui-select-item') : q('.bpui-selectmenu-list-row');
@@ -704,7 +704,7 @@
             !this.isNew && this.bottomTitle();
             this.oldControlHide();
         },
-        autoHandler: function () {
+        autoHandler() {
             this.h5Player = q('#bofqi .bilibili-player-video video');
             if (this.getCheckboxSetting('playAndPause') === ON) {
                 this.getCheckboxSetting('playAndPause') === ON && this.h5Player[0].play();
@@ -720,7 +720,7 @@
             this.oldControlHide();
             this.hideSenderBar();
         },
-        autoHandlerForReload: function () {
+        autoHandlerForReload() {
             if (!this.reload) {
                 return;
             }
@@ -735,7 +735,7 @@
                 this.playerMode(WIDESCREEN);
             }
         },
-        getNewPart: function (isNext) {
+        getNewPart(isNext) {
             const cur = this.isNewBangumi ? q('.ep-item.cursor') : this.isNew ? q('#multi_page .cur-list ul li.on') : this.isBangumi ? q('.episode-item.on') : q('.item.on');
             if (!cur[0]) {
                 return;
@@ -747,7 +747,7 @@
             const excludeClasses = ['v-part-toggle', 'btn-episode-more'];
             return !excludeClasses.some(x => newPart[0].className.includes(x)) ? newPart : undefined;
         },
-        partHandler: function (isNext) {
+        partHandler(isNext) {
             const newPart = this.getNewPart(isNext);
             if (newPart) {
                 this.reload = this.getCheckboxSetting('reloadPart') === ON;
@@ -762,7 +762,7 @@
             }
             return newPart;
         },
-        triggerSleep: function (el, event='click', ms=100) {
+        triggerSleep(el, event='click', ms=100) {
             return new Promise((resolve, reject) => {
                 if (el && el[0]) {
                     el.trigger(event);
@@ -772,14 +772,14 @@
                 }
             });
         },
-        setVideoCurrentTime: function (time) {
+        setVideoCurrentTime(time) {
             if (time > -1 && time <= this.h5Player[0].duration) {
                 this.h5Player[0].currentTime = time;
                 return true;
             }
             return false;
         },
-        showDanmuInput: function () {
+        showDanmuInput() {
             this.showSenderBar();
             const danmuInput = q('input.bilibili-player-video-danmaku-input');
             if (!q('input.bilibili-player-video-danmaku-input:focus').length) {
@@ -789,7 +789,7 @@
                 }).catch(() => {});
             }
         },
-        hideDanmuInput: function () {
+        hideDanmuInput() {
             this.hideSenderBar();
             const danmuInput = q('input.bilibili-player-video-danmaku-input');
             this.triggerSleep(danmuInput, 'mouseout').then(() => {
@@ -798,16 +798,16 @@
                 this.focusPlayer();
             }).catch(() => {});
         },
-        hideOrShowSenderBar: function (status) {
+        hideOrShowSenderBar(status) {
             this.hideSenderBar(status) || this.showSenderBar();
         },
-        hideSenderBar: function (flag = false) {
+        hideSenderBar(flag = false) {
             return (flag || this.getCheckboxSetting('hideSenderBar') === ON) && q('.bilibili-player-video-sendbar').css('opacity', 0).css('display', 'none')[0];
         },
-        showSenderBar: function () {
+        showSenderBar() {
             q('.bilibili-player-video-sendbar').css('opacity', 1).css('display', 'flex');
         },
-        isRepeatPlay: function () {
+        isRepeatPlay() {
             return q('.icon-24repeaton').length || this.isNew && !q('.bilibili-player-video-btn-repeat.closed').length;
         },
         oldControlShow: function() {
@@ -822,7 +822,7 @@
         newControlHide: function() {
             q('.bilibili-player-area').removeClass('video-control-show');
         },
-        h5PlayerRotate: function (flag) {
+        h5PlayerRotate(flag) {
             const h5Player = this.h5Player[0];
             const deg = this.getRotationDeg(this.h5Player) + this.getVarSetting('rotationDeg') * flag;
             let transform = `rotate(${deg}deg)`;
@@ -833,17 +833,17 @@
             }
             this.setH5PlayerRransform(transform);
         },
-        setH5PlayerRransform: function (transform) {
+        setH5PlayerRransform(transform) {
             this.h5Player.css('-webkit-transform', transform)
                 .css('-moz-transform', transform)
                 .css('-ms-transform', transform)
                 .css('-o-transform', transform)
                 .css('transform', transform);
         },
-        getTransformCss: function (e) {
+        getTransformCss(e) {
             return e.getCss('-webkit-transform') || e.getCss('-moz-transform') || e.getCss('-ms-transform') || e.getCss('-o-transform') || 'none';
         },
-        getRotationDeg: function (e) {
+        getRotationDeg(e) {
             const transformCss = this.getTransformCss(e);
             let matrix = transformCss.match('matrix\\((.*)\\)');
             if (matrix) {
@@ -855,15 +855,15 @@
             }
             return 0;
         },
-        addStyle: function (css, id) {
+        addStyle(css, id) {
             id = id ? `id=${id}` : '';
             q('head').append(`<style ${id} type="text/css">${css}</style>`);
         },
-        removeStyle: function (styleId) {
+        removeStyle(styleId) {
             const styleNode = q(styleId)[0];
             styleNode && styleNode.parentNode.removeChild(styleNode);
         },
-        initSettingHTML: function () {
+        initSettingHTML() {
             if (q('#quick-do-setting-panel')[0]) {
                 return;
             }
@@ -901,7 +901,7 @@
             this.initKeySettingHTML();
             this.initVarSettingHTML();
         },
-        initCheckboxHTML: function (panel, configName, options, btn) {
+        initCheckboxHTML(panel, configName, options, btn) {
             if (btn) {
                 panel.append(`<div id="quick-do-${configName}-panel" class="bilibili-player-video-btn-setting-panel-others-content" style="display: none;width: 100%;float: left;"></div>`);
                 panel.append(`<span id="quick-do-${configName}-btn" style="display: inline-block;width: 100%;float: left;">${btn}</span>`);
@@ -938,7 +938,7 @@
                 }
             }
         },
-        getSettingHTML: function (checkboxId, text, tips) {
+        getSettingHTML(checkboxId, text, tips) {
             tips = tips ? `<div id="${checkboxId}-tips" style="display: none;background: rgba(0, 0, 0, 0.7);color: white;border-radius: 5px;padding: 0px 20px;">${tips}</div>` : '';
             return `
             <div id="${checkboxId}" style="display: inline-block;width: 100%;float: left;">
@@ -954,7 +954,7 @@
                 </label>
             </div>`;
         },
-        getNewSettingHTML: function (checkboxId, text, tips) {
+        getNewSettingHTML(checkboxId, text, tips) {
             tips = tips ? `<div id="${checkboxId}-tips" style="display: none;background: rgba(0, 0, 0, 0.7);border-radius: 5px;padding: 0px 20px;">${tips}</div>` : '';
             return `
             <div class="bilibili-player-video-btn-setting-panel-others-content" style="width: 100%;float: left;">
@@ -978,7 +978,7 @@
                 </div>
             </div>`;
         },
-        initKeySettingHTML: function () {
+        initKeySettingHTML() {
             const color = this.isNew ? 'black' : 'white';
             q('#quick-do-setting-panel').append(`
                 <span id="quick-do-setting-key-btn" style="display: inline-block;width: 100%;float: left;">快捷键设置</span>
@@ -1011,21 +1011,21 @@
                 });
             }
         },
-        getKeySettingHTML: function (inputId, text, value) {
+        getKeySettingHTML(inputId, text, value) {
             return `
             <div style="float: left;width: 50%;">
                 <input id="${inputId}" value="${value}" maxlength=1 style="display: inline-block;width: 30px;"></input>
                 <span>${text}</span>
             </div>`;
         },
-        getNewKeySettingHTML: function (inputId, text, value) {
+        getNewKeySettingHTML(inputId, text, value) {
             return `
             <div class="bilibili-player-fl bui bui-dark" style="width: 50%;">
                 <input type="input" id="${inputId}" value="${value}" maxlength=1 style="display: inline-block;width: 30px;color: black;"></input>
                 <span>${text}</span>
             </div>`;
         },
-        initVarSettingHTML: function () {
+        initVarSettingHTML() {
             const color = this.isNew ? 'black' : 'white';
             q('#quick-do-setting-panel').append(`
                 <span id="quick-do-setting-var-btn" style="display: inline-block;width: 100%;float: left;">变量设置</span>
@@ -1046,24 +1046,24 @@
                 }).on('keydown', e => e.stopPropagation());
             }
         },
-        getVarSettingHTML: function (inputId, text, value) {
+        getVarSettingHTML(inputId, text, value) {
             return `
             <div style="float: left;width: 100%;">
                 <input id="${inputId}" value="${value}" maxlength=5 style="display: inline-block;width: 30px;"></input>
                 <span>${text}</span>
             </div>`;
         },
-        getNewVarSettingHTML: function (inputId, text, value) {
+        getNewVarSettingHTML(inputId, text, value) {
             return `
             <div class="bilibili-player-fl bui bui-dark" style="width: 100%;">
                 <input type="input" id="${inputId}" value="${value}" maxlength=5 style="display: inline-block;width: 30px;color: black;"></input>
                 <span>${text}</span>
             </div>`;
         },
-        checkHint: function (auto = false) {
+        checkHint(auto = false) {
             return auto ? this.getCheckboxSetting('autoHint') === ON : this.getCheckboxSetting('hint') === ON;
         },
-        showHint: function (info, auto = false) {
+        showHint(info, auto = false) {
             if (!this.checkHint(auto)) {
                 return;
             }
@@ -1072,7 +1072,7 @@
             q('span.bilibili-player-infoHint-text')[0].innerHTML = info;
             this.hintTimer = setTimeout(() => q('div.bilibili-player-infoHint').css('opacity', 0).css('display', 'none'), 1E3);
         },
-        initDanmuStyle: function (status) {
+        initDanmuStyle(status) {
             const styleNode = q('#qd-danmuColor')[0];
             if (!status) {
                 styleNode && styleNode.parentNode.removeChild(styleNode);
@@ -1081,12 +1081,12 @@
                 this.addStyle(css, 'qd-danmuColor');
             }
         },
-        videoEndedHander: function () {
+        videoEndedHander() {
             this.repeatEnd = this.repeatStart = undefined;
             if (this.getCheckboxSetting('autoJumpContent') === ON) {
                 setTimeout(() => this.jumpContent(), 0);
             }
-            if (this.isRepeatPlay() || this.partHandler(true)) {
+            if (this.isRepeatPlay() || this.getNewPart(true)) {
                 return;
             }
             if (this.getCheckboxSetting('lightOn') === ON && this.isLightOff()) {
@@ -1099,7 +1099,7 @@
             }
             this.reload = true;
         },
-        init: function () {
+        init() {
             let stageFlag = undefined;
             new MutationObserver((mutations, observer) => {
                 mutations.forEach(mutation => {
