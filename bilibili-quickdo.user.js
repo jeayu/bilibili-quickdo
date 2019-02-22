@@ -232,7 +232,7 @@
                         dblclick: { text: '双击全屏', status: ON },
                         hint: { text: '快捷键提示', status: ON },
                         autoHint: { text: '自动操作提示', status: ON, tips: '自动关闭弹幕时的提示' },
-                        reloadPart: { text: '换P重新加载', status: OFF, tips: '使用快捷键时生效.</br>勾选: 屏幕回到自动设置的模式.</br>不勾选: 屏幕和上一P一样,</br>番剧下一P不是续集换P会无效.' },
+                        reloadPart: { text: '换P重新加载', status: OFF, tips: '勾选: 换P时屏幕回到自动设置的模式.</br>不勾选: 屏幕和上一P一样,</br>番剧下一P不是续集换P会无效.' },
                         danmuColor: { text: '统一弹幕颜色', status: OFF, fn: 'initDanmuStyle' },
                         globalHotKey: { text: '默认快捷键设置全局', status: OFF, tips: '上下左右空格不会滚动页面' },
                         danmuMask: { text: '关闭弹幕蒙版', status: OFF, fn: 'danmuMask'},
@@ -293,7 +293,7 @@
             },
         },
         bindPlayerEvent() {
-            player.addEventListener('dblclick', () => this.getCheckboxSetting('dblclick') === ON && this.fullscreen());
+            (q('.bilibili-player-video')&&q('.bilibili-player-video')[0]||player).addEventListener('dblclick', () => this.getCheckboxSetting('dblclick') === ON && this.fullscreen());
             player.addEventListener('video_resize', () => {
                 this.hideSenderBar();
                 q('body').toggleClass('qd-wide-flag', this.isWidescreen());
@@ -750,7 +750,6 @@
         partHandler(isNext) {
             const newPart = this.getNewPart(isNext);
             if (newPart) {
-                this.reload = this.getCheckboxSetting('reloadPart') === ON;
                 if (!this.reload) {
                     const index = newPart.hasClass('episode-item') ? q('.episode-item').findIndex(e => e.className.indexOf('on') > 0) : player.getPlaylistIndex();
                     isNext ? player.next(index + 2) : player.next(index);
@@ -1119,6 +1118,7 @@
                     } else if (stage === "1") {
                         this.autoHandlerForStage1();
                         this.bindDanmuInputKeydown();
+                        this.reload = this.getCheckboxSetting('reloadPart') === ON;
                         console.log('bilibili-quickdo init done');
                     } else if (target.hasClass('bilibili-player-video')) {
                         this.h5Player = q('#bofqi .bilibili-player-video video');
