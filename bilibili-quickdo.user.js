@@ -58,7 +58,7 @@
             return result && result.value;
         }
         nodes.hasClass = function (className, index = 0) {
-            return nodes.length > index && nodes[index].className.match && nodes[index].className.match(new RegExp(`(\\s|^)${className}(\\s|$)`));
+            return nodes.length > index && nodes[index].className.match && (nodes[index].className.match(new RegExp(`(\\s|^)${className}(\\s|$)`)) != null);
         }
         nodes.append = function (text, where = 'beforeend', index = 0) {
             nodes.length > index && nodes[index].insertAdjacentHTML(where, text);
@@ -233,9 +233,7 @@
                         hint: { text: '快捷键提示', status: ON },
                         autoHint: { text: '自动操作提示', status: ON, tips: '自动关闭弹幕时的提示' },
                         reloadPart: { text: '换P重新加载', status: OFF, tips: '勾选: 屏幕回到自动设置的模式.</br>不勾选: 屏幕和上一P一样,</br>番剧下一P不是续集换P会无效.' },
-                        danmuColor: { text: '统一弹幕颜色', status: OFF, fn: 'initDanmuStyle' },
                         globalHotKey: { text: '默认快捷键设置全局', status: OFF, tips: '上下左右空格不会滚动页面' },
-                        danmuMask: { text: '关闭弹幕蒙版', status: OFF, fn: 'danmuMask'},
                     },
                     btn: '常规设置',
                 },
@@ -254,6 +252,18 @@
                     },
                     btn: '播放器设置',
                 },
+                danmuCheckbox: {
+                    options: {
+                        danmuColor: { text: '统一弹幕颜色', status: OFF, fn: 'initDanmuStyle' },
+                        danmuMask: { text: '关闭弹幕蒙版', status: OFF, fn: 'danmuMask'},
+                        danmuOFF: { text: '自动关闭弹幕', status: OFF },
+                        bangumiDanmuOFF: { text: '番剧自动关弹幕', status: OFF },
+                        danmuTopOFF: { text: '自动关闭顶部弹幕', status: OFF },
+                        danmuBottomOFF: { text: '自动关闭底部弹幕', status: OFF },
+                        danmuScrollOFF: { text: '自动关闭滚动弹幕', status: OFF },
+                    },
+                    btn: '弹幕设置',
+                },
                 startCheckbox: {
                     options: {
                         playAndPause: { text: '自动播放', status: ON },
@@ -262,8 +272,6 @@
                         fullscreen: { text: '自动全屏', status: OFF, ban:['webFullscreen', 'widescreen'], tips: '浏览器限制不能真全屏' },
                         webFullscreen: { text: '自动网页全屏', status: ON, ban:['fullscreen', 'widescreen'] },
                         widescreen: { text: '自动宽屏', status: OFF, ban:['webFullscreen', 'fullscreen'] },
-                        danmuOFF: { text: '自动关闭弹幕', status: OFF },
-                        bangumiDanmuOFF: { text: '番剧自动关弹幕', status: OFF },
                         highQuality: { text: '自动最高画质', status: OFF, ban:['vipHighQuality'] },
                         vipHighQuality: { text: '自动最高画质(大会员使用)', status: OFF, ban:['highQuality'] },
                         moreDescribe: { text: '自动展开视频简介', status: OFF },
@@ -549,26 +557,30 @@
                 this.showHint(hint, auto);
             }
         },
-        danmuType(type) {
+        danmuType(type, auto = false) {
             const btn = this.isNew ? q('.bilibili-player-video-danmaku-setting') : q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
             const danmuOpt = btn.mouseover().mouseout().find(`div[ftype="${type}"]`);
             if (danmuOpt) {
                 danmuOpt.click().mouseout();
                 if (danmuOpt.hasClass('disabled')) {
-                    this.showHint(`关闭${danmuOpt.text()}`);
+                    this.showHint(`关闭${danmuOpt.text()}`, auto);
                 } else {
-                    this.showHint(`开启${danmuOpt.text()}`);
+                    this.showHint(`开启${danmuOpt.text()}`, auto);
                 }
             }
         },
-        danmuTop() {
-            this.danmuType('top');
+        danmuTypeDisabledStatus(type) {
+            const btn = this.isNew ? q('.bilibili-player-video-danmaku-setting') : q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
+            return btn.mouseover().mouseout().find(`div[ftype="${type}"]`).mouseout().hasClass('disabled');
         },
-        danmuBottom() {
-            this.danmuType('bottom');
+        danmuTop(auto = false) {
+            this.danmuType('top', auto);
         },
-        danmuScroll() {
-            this.danmuType('scroll');
+        danmuBottom(auto = false) {
+            this.danmuType('bottom', auto);
+        },
+        danmuScroll(auto = false) {
+            this.danmuType('scroll', auto);
         },
         danmuPrevent() {
             const e = this.isNew ? q('.bilibili-player-video-danmaku-setting').mouseover().mouseout().find('.bilibili-player-video-danmaku-setting-left-preventshade-box input') :
@@ -714,6 +726,10 @@
                 flag = q('.choose_danmaku').text().indexOf('关闭') > -1 ||
                     !flag[0] && !q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku_close"]')[0];
                 flag && this.danmu(true);
+            } else {
+                this.getCheckboxSetting('danmuTopOFF') === ON != this.danmuTypeDisabledStatus('top') && this.danmuTop(true);
+                this.getCheckboxSetting('danmuBottomOFF') === ON != this.danmuTypeDisabledStatus('bottom') && this.danmuBottom(true);
+                this.getCheckboxSetting('danmuScrollOFF') === ON != this.danmuTypeDisabledStatus('scroll') && this.danmuScroll(true);
             }
             q('.bilibili-player-ending-panel').css('display', 'none');
             this.autoHandlerForReload();
