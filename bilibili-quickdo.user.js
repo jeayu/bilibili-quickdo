@@ -232,7 +232,7 @@
                         dblclick: { text: '双击全屏', status: ON },
                         hint: { text: '快捷键提示', status: ON },
                         autoHint: { text: '自动操作提示', status: ON, tips: '自动关闭弹幕时的提示' },
-                        reloadPart: { text: '换P重新加载', status: OFF, tips: '使用快捷键时生效.</br>勾选: 屏幕回到自动设置的模式.</br>不勾选: 屏幕和上一P一样,</br>番剧下一P不是续集换P会无效.' },
+                        reloadPart: { text: '换P重新加载', status: OFF, tips: '勾选: 屏幕回到自动设置的模式.</br>不勾选: 屏幕和上一P一样,</br>番剧下一P不是续集换P会无效.' },
                         danmuColor: { text: '统一弹幕颜色', status: OFF, fn: 'initDanmuStyle' },
                         globalHotKey: { text: '默认快捷键设置全局', status: OFF, tips: '上下左右空格不会滚动页面' },
                         danmuMask: { text: '关闭弹幕蒙版', status: OFF, fn: 'danmuMask'},
@@ -293,7 +293,7 @@
             },
         },
         bindPlayerEvent() {
-            player.addEventListener('dblclick', () => this.getCheckboxSetting('dblclick') === ON && this.fullscreen());
+            q('.bilibili-player-video').on('dblclick', () => this.getCheckboxSetting('dblclick') === ON && this.fullscreen());
             player.addEventListener('video_resize', () => {
                 this.hideSenderBar();
                 q('body').toggleClass('qd-wide-flag', this.isWidescreen());
@@ -314,7 +314,7 @@
             this.customUltraWidescreenHeight();
         },
         bottomTitle() {
-            if (!this.reload || this.getCheckboxSetting('bottomTitle') === OFF) {
+            if (this.getCheckboxSetting('bottomTitle') === OFF) {
                 return;
             }
             const paused = this.h5Player && this.h5Player[0] ? this.h5Player[0].paused : true;
@@ -324,7 +324,7 @@
             this.rConCss();
         },
         danmukuBoxAfterMultiPage() {
-            if (!this.reload || !this.isNew) {
+            if (!this.isNew) {
                 return;
             }
             this.getCheckboxSetting('danmukuBoxAfterMultiPage') === ON && q('#danmukuBox').after(q('#multi_page')[0]);
@@ -484,11 +484,11 @@
                 e.keyCode === this.keyCode.enter && this.hideDanmuInput();
             });
         },
-        addSpeed: function() {
+        addSpeed() {
             this.h5Player[0].playbackRate = Math.min(this.h5Player[0].playbackRate + this.getVarSetting('speed'), this.getVarSetting('maxSpeed'));
             this.showHint(`${this.h5Player[0].playbackRate} X`);
         },
-        subSpeed: function() {
+        subSpeed() {
             this.h5Player[0].playbackRate = Math.max(this.h5Player[0].playbackRate - this.getVarSetting('speed'), this.getVarSetting('minSpeed'));
             this.showHint(`${this.h5Player[0].playbackRate} X`);
         },
@@ -696,7 +696,7 @@
                 const index = this.getCheckboxSetting('highQuality') === ON ? btn.findIndex(e => !q(e).find('.bilibili-player-bigvip')[0]) : 0;
                 btn.click(index);
             }
-            if (this.reload && this.getCheckboxSetting('jump') === ON) {
+            if (this.getCheckboxSetting('jump') === ON) {
                 this.jump();
             }
             this.moreDescribe();
@@ -810,16 +810,16 @@
         isRepeatPlay() {
             return q('.icon-24repeaton').length || this.isNew && !q('.bilibili-player-video-btn-repeat.closed').length;
         },
-        oldControlShow: function() {
+        oldControlShow() {
             return !this.isNew && this.isFullScreen() && q('.bilibili-player-video-control').css('opacity', 1);
         },
-        oldControlHide: function() {
+        oldControlHide() {
             return !this.isNew && this.isFullScreen() && q('.bilibili-player-video-control').css('opacity', 0);
         },
-        newControlShow: function() {
+        newControlShow() {
             q('.bilibili-player-area').addClass('video-control-show');
         },
-        newControlHide: function() {
+        newControlHide() {
             q('.bilibili-player-area').removeClass('video-control-show');
         },
         h5PlayerRotate(flag) {
@@ -923,7 +923,7 @@
                     gmvalue === ON && ban && ban.forEach((k,i) => this.getCheckboxSetting(k) === ON && q(`#cb-${k}`).click());
                     !this.isNew && q(`#${checkboxId}-lable`).toggleClass('bpui-state-active', gmvalue === ON);
                     fn && this[fn](gmvalue === ON);
-                }).on('dblclick', e => e.stopPropagation());
+                });
                 fn && this[fn](checked);
                 if (tips) {
                     const tipsNode = q(`#${checkboxId}-tips`);
@@ -1086,7 +1086,11 @@
             if (this.getCheckboxSetting('autoJumpContent') === ON) {
                 setTimeout(() => this.jumpContent(), 0);
             }
-            if (this.isRepeatPlay() || this.getNewPart(true)) {
+            if (this.isRepeatPlay()) {
+                return;
+            }
+            if (this.getNewPart(true)) {
+                this.reload = this.getCheckboxSetting('reloadPart') === ON;
                 return;
             }
             if (this.getCheckboxSetting('lightOn') === ON && this.isLightOff()) {
@@ -1119,6 +1123,7 @@
                     } else if (stage === "1") {
                         this.autoHandlerForStage1();
                         this.bindDanmuInputKeydown();
+                        this.reload = true;
                         console.log('bilibili-quickdo init done');
                     } else if (target.hasClass('bilibili-player-video')) {
                         this.h5Player = q('#bofqi .bilibili-player-video video');
