@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.9.4
+// @version      0.9.9.5
 // @description  快捷键设置,回车快速发弹幕,双击全屏,自动选择最高清画质、播放、全屏、关闭弹幕、自动转跳和自动关灯等
 // @author       jeayu
 // @license      MIT
@@ -560,6 +560,7 @@
         danmuType(type, auto = false) {
             const btn = this.isNew ? q('.bilibili-player-video-danmaku-setting') : q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
             const danmuOpt = btn.mouseover().mouseout().find(`div[ftype="${type}"]`);
+            q('.bilibili-player-video-danmaku-setting-wrap').css('display', 'none');
             if (danmuOpt) {
                 danmuOpt.click().mouseout();
                 if (danmuOpt.hasClass('disabled')) {
@@ -571,7 +572,9 @@
         },
         danmuTypeDisabledStatus(type) {
             const btn = this.isNew ? q('.bilibili-player-video-danmaku-setting') : q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku"]');
-            return btn.mouseover().mouseout().find(`div[ftype="${type}"]`).mouseout().hasClass('disabled');
+            const result =  btn.mouseover().mouseout().find(`div[ftype="${type}"]`).hasClass('disabled');
+            q('.bilibili-player-video-danmaku-setting-wrap').css('display', 'none');
+            return result;
         },
         danmuTop(auto = false) {
             this.danmuType('top', auto);
@@ -711,6 +714,9 @@
             if (this.getCheckboxSetting('jump') === ON) {
                 this.jump();
             }
+            this.getCheckboxSetting('danmuTopOFF') === ON != this.danmuTypeDisabledStatus('top') && this.danmuTop(true);
+            this.getCheckboxSetting('danmuBottomOFF') === ON != this.danmuTypeDisabledStatus('bottom') && this.danmuBottom(true);
+            this.getCheckboxSetting('danmuScrollOFF') === ON != this.danmuTypeDisabledStatus('scroll') && this.danmuScroll(true);
             this.moreDescribe();
             this.danmuList();
             !this.isNew && this.bottomTitle();
@@ -726,10 +732,6 @@
                 flag = q('.choose_danmaku').text().indexOf('关闭') > -1 ||
                     !flag[0] && !q('.bilibili-player-video-btn-danmaku[name^="ctlbar_danmuku_close"]')[0];
                 flag && this.danmu(true);
-            } else {
-                this.getCheckboxSetting('danmuTopOFF') === ON != this.danmuTypeDisabledStatus('top') && this.danmuTop(true);
-                this.getCheckboxSetting('danmuBottomOFF') === ON != this.danmuTypeDisabledStatus('bottom') && this.danmuBottom(true);
-                this.getCheckboxSetting('danmuScrollOFF') === ON != this.danmuTypeDisabledStatus('scroll') && this.danmuScroll(true);
             }
             q('.bilibili-player-ending-panel').css('display', 'none');
             this.autoHandlerForReload();
@@ -770,9 +772,7 @@
                 if (!this.reload) {
                     const index = newPart.hasClass('episode-item') ? q('.episode-item').findIndex(e => e.className.indexOf('on') > 0) : player.getPlaylistIndex();
                     isNext ? player.next(index + 2) : player.next(index);
-                } else if (newPart.find('a')[0]) {
-                    newPart.find('a').click();
-                } else {
+                } else if (!newPart.find('a').click()[0]) {
                     newPart.click();
                 }
             }
@@ -884,11 +884,10 @@
                 return;
             }
             this.isNew = q('.bilibili-player-video-btn-setting').mouseover()[0];
-            this.isNew && this.newControlHide();
             this.isBangumi = window.location.href.indexOf('bangumi') >= 0;
             this.isNewBangumi = this.isBangumi && this.isNew;
             this.isWatchlater = window.location.href.indexOf('watchlater') >= 0;
-            let panel = q('.bilibili-player-video-btn-setting-panel-panel-others');
+            let panel = q('.bilibili-player-video-btn-setting-panel-panel-others').css('display', 'none');
             if (!this.isNew) {
                 q('.bilibili-player-video-btn-quality').append(`
                     <div id="quick-do-setting-btn" class="bilibili-player-video-btn">
@@ -916,6 +915,7 @@
             q('#quick-do-setting-sycn-btn').on('click', () => confirm("确认同步?") && this.syncNewConfig2Old());
             this.initKeySettingHTML();
             this.initVarSettingHTML();
+            this.isNew && panel.css('display', 'block');
         },
         initCheckboxHTML(panel, configName, options, btn) {
             if (btn) {
