@@ -122,6 +122,10 @@
         }
         return nodes;
     }
+    const debounce = (fn, delay) => {
+        clearTimeout(fn.timer);
+        fn.timer = setTimeout(() => fn.apply(bilibiliQuickDo), delay);
+    };
     const [ON, OFF] = [1, 0];
     const [FULLSCREEN, WEBFULLSCREEN, WIDESCREEN, DEFAULT] = [3, 2, 1, 0];
     const bilibiliQuickDo = {
@@ -306,14 +310,14 @@
                 this.hideSenderBar();
                 q('body').toggleClass('qd-wide-flag', this.isWidescreen());
                 this.initPlayerStyle();
-                setTimeout(() => this.fixVideoResize(), 100);
+                debounce(this.fixVideoResize, 100);
             });
             player.addEventListener('video_media_ended', () => this.videoEndedHander());
             player.addEventListener('video_media_playing', () => this.getCheckboxSetting('lightOffWhenPlaying') === ON && !this.isLightOff() && this.lightOff());
             player.addEventListener('video_media_pause', () => this.getCheckboxSetting('lightOnWhenPause') === ON && this.isLightOff() && this.lightOff());
         },
         fixVideoResize() {
-            this.isWidescreen() && !q('.mini-player')[0] && this.setWidescreenPos();
+            this.isWidescreen() && !this.hasMiniPlayer() && this.setWidescreenPos();
             q('#playerWrap').css('height', q('#bofqi').getCss('height'));
         },
         initPlayerStyle() {
@@ -339,10 +343,10 @@
         },
         rConCss() {
             this.removeStyle('#qd-rCon');
-            if (!this.isNew || q('.mini-player')[0]) {
+            if (!this.isNew || this.hasMiniPlayer()) {
                 return;
             }
-            if (this.getCheckboxSetting('bottomTitle') === ON ) {
+            if (this.getCheckboxSetting('bottomTitle') === ON) {
                 const top = this.getCheckboxSetting('bottomTitle') === ON ? q('.player').parseFloat('height') : q('.player').parseFloat('height') + q('#v_upinfo').parseFloat('margin-bottom') + q('#v_upinfo').parseFloat('height');
                 const css = `
                 .qd-wide-flag .r-con{margin-top:${top}px!important}`;
@@ -351,7 +355,7 @@
         },
         customUltraWidescreenHeight() {
             this.removeStyle('#qd-customUltraWidescreenHeight');
-            if (this.getCheckboxSetting('customUltraWidescreenHeight') === ON && !q('.mini-player')[0]) {
+            if (this.getCheckboxSetting('customUltraWidescreenHeight') === ON && !this.hasMiniPlayer()) {
                 const clientWidth = document.body.clientWidth;
                 const marginLeft = q('#bofqi').offset().left;
                 const clientHeight = document.body.clientHeight * Math.min(this.getVarSetting('ultraWidescreenHeightPercent') / 100, 1);
@@ -374,7 +378,7 @@
         },
         ultraWidescreen() {
             this.removeStyle('#qd-ultraWidescreen');
-            if (this.getCheckboxSetting('ultraWidescreen') === ON && !q('.mini-player')[0]) {
+            if (this.getCheckboxSetting('ultraWidescreen') === ON && !this.hasMiniPlayer()) {
                 const clientWidth = document.body.clientWidth;
                 const marginLeft = q('#bofqi').offset().left;
                 const css = `
@@ -388,7 +392,7 @@
         },
         customPlayerHeight() {
             this.removeStyle('#qd-customPlayerHeight');
-            if (this.getCheckboxSetting('customPlayerHeight') === ON && !q('.mini-player')[0]) {
+            if (this.getCheckboxSetting('customPlayerHeight') === ON && !this.hasMiniPlayer()) {
                 const clientHeight = document.body.clientHeight * Math.min(this.getVarSetting('playerHeightPercent') / 100, 1);
                 const marginHeight = clientHeight - q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).parseFloat('height');
                 const css = `
@@ -405,8 +409,7 @@
             this.rConCss();
         },
         danmuMask() {
-            const styleNode = q('#qd-danmuMask')[0];
-            styleNode && styleNode.parentNode.removeChild(styleNode);
+            this.removeStyle('#qd-danmuMask');
             if (this.getCheckboxSetting('danmuMask') === ON) {
                 const css = '.bilibili-player-video-danmaku{-webkit-mask-image: none!important}';
                 this.addStyle(css, 'qd-danmuMask');
@@ -521,6 +524,9 @@
         isWidescreen() {
             return q('#bilibiliPlayer').hasClass('mode-widescreen');
         },
+        hasMiniPlayer() {
+            return q('.mini-player')[0];
+        },
         webFullscreen() {
             this.isFullScreen() ? this.playerMode(WEBFULLSCREEN) : q('.bilibili-player-video-web-fullscreen').click();
         },
@@ -530,21 +536,29 @@
         },
         playerMode(mode) {
             player.mode(mode);
-            mode === WIDESCREEN && setTimeout(() => this.setWidescreenPos(), 100);
+            mode === WIDESCREEN && this.setWidescreenPos(true);
             q('body').toggleClass('qd-wide-flag', this.isWidescreen());
         },
-        setWidescreenPos() {
+        setWidescreenPos(isDelay=false) {
             if (!this.isWidescreen()) {
                 return;
             }
-            this.getCheckboxSetting('widescreenScroll2Top') === ON ? this.scroll2Top() : this.getCheckboxSetting('widescreenSetOnTop') === ON && this.playerSetOnTop();
+            if (this.getCheckboxSetting('widescreenScroll2Top') === ON) {
+                this.scroll2Top();
+            } else if (this.getCheckboxSetting('widescreenSetOnTop') === ON) {
+                this.playerSetOnTop(isDelay);
+            }
         },
         scroll2Top() {
             window.scrollTo(0, 0);
         },
-        playerSetOnTop() {
+        bofqiSetOnTop() {
+            const top = q('#bofqi').offset().top;
+            top > 0 && window.scrollTo(0, top);
+        },
+        playerSetOnTop(isDelay=false) {
             this.scroll2Top();
-            window.scrollTo(0, q('#bofqi').offset().top);
+            isDelay || this.hasMiniPlayer() ? debounce(this.bofqiSetOnTop, 100) : this.bofqiSetOnTop();
         },
         danmu(auto = false) {
             if (this.isNew) {
@@ -887,7 +901,8 @@
             this.isBangumi = window.location.href.indexOf('bangumi') >= 0;
             this.isNewBangumi = this.isBangumi && this.isNew;
             this.isWatchlater = window.location.href.indexOf('watchlater') >= 0;
-            let panel = q('.bilibili-player-video-btn-setting-panel-panel-others').css('display', 'none');
+            let panel = q('.bilibili-player-video-btn-setting-panel-panel-others')
+            q('.bilibili-player-video-btn-setting-panel').css('height', 'auto').css('display', 'none');
             if (!this.isNew) {
                 q('.bilibili-player-video-btn-quality').append(`
                     <div id="quick-do-setting-btn" class="bilibili-player-video-btn">
@@ -906,8 +921,6 @@
                 panel.append(`
                     <div id="quick-do-setting-panel" class="bilibili-player-video-btn-setting-panel-others-content" style="display: inline-block;width: 100%;float: left;"></div>
                 `);
-                q('.bilibili-player-video-btn-setting').mouseout();
-                q('.bilibili-player-video-control .bilibili-player-video-btn-setting-panel').css('height', 'auto');
             }
             q('#quick-do-setting-panel').append(`
                 <span id="quick-do-setting-sycn-btn" style="display: inline-block;width: 100%;float: left;">同步新版配置到旧版</span>
@@ -915,7 +928,6 @@
             q('#quick-do-setting-sycn-btn').on('click', () => confirm("确认同步?") && this.syncNewConfig2Old());
             this.initKeySettingHTML();
             this.initVarSettingHTML();
-            this.isNew && panel.css('display', 'block');
         },
         initCheckboxHTML(panel, configName, options, btn) {
             if (btn) {
@@ -1119,6 +1131,12 @@
             }
             this.reload = true;
         },
+        newVersionPalyerStyleHander() {
+            this.danmuList();
+            this.initPlayerStyle();
+            this.danmukuBoxAfterMultiPage();
+            this.bottomTitle();
+        },
         init() {
             let stageFlag = undefined;
             new MutationObserver((mutations, observer) => {
@@ -1150,10 +1168,7 @@
                         if (mutation.target.id == 'v_desc') {
                             this.moreDescribe();
                         } else if (mutation.target.id == 'slide_ad') {
-                            this.danmuList();
-                            this.initPlayerStyle();
-                            this.danmukuBoxAfterMultiPage();
-                            this.bottomTitle();
+                            debounce(this.newVersionPalyerStyleHander, 100);
                         }
                     }
                 });
