@@ -326,7 +326,7 @@
             this.customUltraWidescreenHeight();
         },
         bottomTitle() {
-            if (this.getCheckboxSetting('bottomTitle') === OFF) {
+            if (!this.reload || this.getCheckboxSetting('bottomTitle') === OFF) {
                 return;
             }
             const paused = this.h5Player && this.h5Player[0] ? this.h5Player[0].paused : true;
@@ -336,7 +336,7 @@
             this.rConCss();
         },
         danmukuBoxAfterMultiPage() {
-            if (!this.isNew) {
+            if (!this.reload || !this.isNew) {
                 return;
             }
             this.getCheckboxSetting('danmukuBoxAfterMultiPage') === ON && q('#danmukuBox').after(q('#multi_page')[0]);
