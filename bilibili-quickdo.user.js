@@ -903,7 +903,7 @@
             this.isBangumi = window.location.href.indexOf('bangumi') >= 0;
             this.isNewBangumi = this.isBangumi && this.isNew;
             this.isWatchlater = window.location.href.indexOf('watchlater') >= 0;
-            let panel = q('.bilibili-player-video-btn-setting-panel-panel-others')
+            let panel = q('.bilibili-player-video-btn-setting-right-others-content');
             q('.bilibili-player-video-btn-setting-panel').css('height', 'auto').css('display', 'none');
             if (!this.isNew) {
                 q('.bilibili-player-video-btn-quality').append(`
