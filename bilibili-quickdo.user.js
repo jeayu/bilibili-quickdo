@@ -280,6 +280,7 @@
                         widescreen: { text: '自动宽屏', status: OFF, ban:['webFullscreen', 'fullscreen'] },
                         highQuality: { text: '自动最高画质', status: OFF, ban:['vipHighQuality'] },
                         vipHighQuality: { text: '自动最高画质(大会员使用)', status: OFF, ban:['highQuality'] },
+                        vipHighQualityNot4K: { text: '自动最高画质不选择4K', status: OFF },
                         moreDescribe: { text: '自动展开视频简介', status: OFF },
                         danmuList: { text: '自动展开新版弹幕列表', status: OFF },
                     },
@@ -724,7 +725,8 @@
             if (this.getCheckboxSetting('highQuality') === ON || this.getCheckboxSetting('vipHighQuality') === ON) {
                 q('.bilibili-player-video-quality-menu').mouseover().mouseout();
                 const btn = this.isNew ? q('.bui-select-item') : q('.bpui-selectmenu-list-row');
-                const index = this.getCheckboxSetting('highQuality') === ON ? btn.findIndex(e => !q(e).find('.bilibili-player-bigvip')[0]) : 0;
+                let index = this.getCheckboxSetting('highQuality') === ON ? btn.findIndex(e => !q(e).find('.bilibili-player-bigvip')[0]) : 
+                    this.getCheckboxSetting('vipHighQualityNot4K') === ON ? btn.findIndex(e => e.textContent != '超清4K大会员') : 0;
                 btn.click(index);
             }
             if (this.getCheckboxSetting('jump') === ON) {
