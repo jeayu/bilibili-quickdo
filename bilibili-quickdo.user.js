@@ -89,8 +89,8 @@
         nodes.last = function () {
             return q(nodes[nodes.length - 1]);
         }
-        nodes.on = function (event, fn, index = 0) {
-            nodes.length > index && nodes[index].addEventListener(event, fn);
+        nodes.on = function (event, fn, useCapture=false, index = 0) {
+            nodes.length > index && nodes[index].addEventListener(event, fn, useCapture);
             return this;
         }
         nodes.select = function (index = 0) {
@@ -242,6 +242,15 @@
                         globalHotKey: { text: '默认快捷键设置全局', status: OFF, tips: '上下左右空格不会滚动页面' },
                     },
                     btn: '常规设置',
+                },
+                defaultShortCutCheckbox: {
+                    options: {
+                        f: { text: 'f键', status: OFF },
+                        leftSquareBracket: { text: '[键', status: OFF },
+                        rightSquareBracket: { text: ']键', status: OFF },
+                        enter: { text: '回车键', status: OFF },
+                    },
+                    btn: '屏蔽默认快捷键',
                 },
                 playerCheckbox: {
                     options: {
@@ -469,7 +478,7 @@
         },
         bindKeydown() {
             this.keydownFn = this.keydownFn || (e=> !q('input:focus, textarea:focus').length && this.keyHandler(e));
-            q(document).on('keydown', this.keydownFn);
+            q(document).on('keydown', this.keydownFn, true);
             q('input.bilibili-player-video-time-seek').on('keydown', e => {
                 const input = q('input.bilibili-player-video-time-seek');
                 const isNum = e.keyCode >= 48 && e.keyCode <= 57 || e.keyCode >= 96 && e.keyCode <= 105;
@@ -703,6 +712,15 @@
         danmuList() {
             this.getCheckboxSetting('danmuList') === ON && q('.bui-collapse-wrap-folded .bui-collapse-arrow-text').click();
         },
+        checkDefaultShortCutSetting(setingKey, keyCodeConfig, keyCode) {
+            return this.keyCode[keyCodeConfig] == keyCode && this.getCheckboxSetting(setingKey) === ON;
+        },
+        checkDefaultShortCut(keyCode) {
+            return this.checkDefaultShortCutSetting("f", "f", keyCode) 
+                || this.checkDefaultShortCutSetting("leftSquareBracket", "[", keyCode)
+                || this.checkDefaultShortCutSetting("rightSquareBracket", "]", keyCode) 
+                || this.checkDefaultShortCutSetting("enter", "enter", keyCode);
+        },
         keyHandler(e) {
             const {keyCode, ctrlKey, shiftKey, altKey} = e;
             if (ctrlKey || shiftKey || altKey) {
@@ -714,6 +732,9 @@
                     this.focusPlayer();
                     return;
                 }
+            }
+            if (this.checkDefaultShortCut(keyCode)) {
+                e.stopPropagation();
             }
             Object.keys(this.config.quickDo)
                 .some(key => keyCode === this.getKeyCode(key) && (!this[key]() || !e.preventDefault())) ||
