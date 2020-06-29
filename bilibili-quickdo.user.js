@@ -1189,11 +1189,11 @@
                     } else if (this.repeatEnd && this.repeatStart && target.hasClass('bilibili-player-video-time-now')
                                && this.repeatEnd <= this.h5Player[0].currentTime) {
                         this.h5Player[0].currentTime = this.repeatStart;
+                    } else if (target.hasClass('bilibili-player-video-top-follow-text')) {
+                        debounce(this.newVersionPalyerStyleHander, 100);
                     } else if (mutation.target.id) {
                         if (mutation.target.id == 'v_desc') {
                             this.moreDescribe();
-                        } else if (mutation.target.id == 'slide_ad') {
-                            debounce(this.newVersionPalyerStyleHander, 100);
                         }
                     }
                 });
