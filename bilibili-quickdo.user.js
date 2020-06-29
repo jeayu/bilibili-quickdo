@@ -863,7 +863,7 @@
             q('.bilibili-player-video-sendbar').css('opacity', 1).css('display', 'flex');
         },
         isRepeatPlay() {
-            return q('.icon-24repeaton').length || this.isNew && !q('.bilibili-player-video-btn-repeat.closed').length;
+            return q('.icon-24repeaton').length || this.isNew && q('.bilibili-player-video-btn-setting-left-repeat input')[0].checked;
         },
         oldControlShow() {
             return !this.isNew && this.isFullScreen() && q('.bilibili-player-video-control').css('opacity', 1);
