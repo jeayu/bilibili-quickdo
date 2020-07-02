@@ -640,16 +640,7 @@
             return q('#heimu').getCss('display') === 'block';
         },
         lightOff() {
-            if (!q('.bilibili-player-video-btn-setting-panel-others-content-lightoff input').click()[0]) {
-                if (!q('#heimu').getCss('display')) {
-                    q('body').append('<div id="heimu" style="display: block;"></div>');
-                } else if (this.isLightOff()) {
-                    q('#heimu').css('display', '')
-                } else {
-                    q('#heimu').css('display', 'block')
-                }
-                q('#bilibiliPlayer').toggleClass('mode-light-off', this.isLightOff());
-            }
+            q('.bilibili-player-video-btn-setting-right-others-content-lightoff input').click();
         },
         seek() {
             this.oldControlShow() || this.newControlShow();
