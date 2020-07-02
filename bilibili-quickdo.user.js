@@ -245,10 +245,15 @@
                 },
                 defaultShortCutCheckbox: {
                     options: {
-                        f: { text: 'f键', status: OFF },
-                        leftSquareBracket: { text: '[键', status: OFF },
-                        rightSquareBracket: { text: ']键', status: OFF },
-                        enter: { text: '回车键', status: OFF },
+                        f: { text: 'f键', status: OFF, bindKey: 'f' },
+                        leftSquareBracket: { text: '[键', status: OFF, bindKey: '[' },
+                        rightSquareBracket: { text: ']键', status: OFF, bindKey: ']' },
+                        enter: { text: '回车键', status: OFF, bindKey: 'enter' },
+                        up: { text: '↑键', status: OFF, bindKey: 'up' },
+                        down: { text: '↓键', status: OFF, bindKey: 'down' },
+                        right: { text: '←键', status: OFF, bindKey: 'left' },
+                        left: { text: '→键', status: OFF, bindKey: 'right' },
+                        space: { text: '空格键', status: OFF, bindKey: 'space' },
                     },
                     btn: '屏蔽默认快捷键',
                 },
@@ -716,26 +721,27 @@
             return this.keyCode[keyCodeConfig] == keyCode && this.getCheckboxSetting(setingKey) === ON;
         },
         checkDefaultShortCut(keyCode) {
-            return this.checkDefaultShortCutSetting("f", "f", keyCode) 
-                || this.checkDefaultShortCutSetting("leftSquareBracket", "[", keyCode)
-                || this.checkDefaultShortCutSetting("rightSquareBracket", "]", keyCode) 
-                || this.checkDefaultShortCutSetting("enter", "enter", keyCode);
+            return Object.entries(this.config.checkboxes.defaultShortCutCheckbox.options)
+                .some(entry => this.checkDefaultShortCutSetting(entry[0], entry[1].bindKey, keyCode));
+        },
+        isGlobalHotKey(keyCode) {
+            return ["left", "up", "right", "down", "space"].find(key => this.keyCode[key] == keyCode);
         },
         keyHandler(e) {
             const {keyCode, ctrlKey, shiftKey, altKey} = e;
             if (ctrlKey || shiftKey || altKey) {
                 return;
             }
-            if (this.getCheckboxSetting('globalHotKey') === ON) {
-                const {left, up, right, down, space} = this.keyCode;
-                if ([left, up, right, down, space].some(kc => kc === keyCode)) {
-                    this.focusPlayer();
-                    return;
-                }
-            }
             if (this.checkDefaultShortCut(keyCode)) {
                 e.stopPropagation();
             }
+            if (this.getCheckboxSetting('globalHotKey') === ON) {
+                if (this.isGlobalHotKey(keyCode)) {
+                    this.focusPlayer();
+                    e.preventDefault();
+                }
+            }
+            
             Object.keys(this.config.quickDo)
                 .some(key => keyCode === this.getKeyCode(key) && (!this[key]() || !e.preventDefault())) ||
                 keyCode >= this.keyCode['0'] && keyCode <= this.keyCode['9'] &&
@@ -1036,7 +1042,7 @@
             q('#quick-do-setting-panel').append(`
                 <span id="quick-do-setting-key-btn" style="display: inline-block;width: 100%;float: left;">快捷键设置</span>
                 <div id="quick-do-setting-key-panel" style="display: none;position: absolute;right: 0px;bottom: 60px;background-color: ${color};padding: 10px;text-align: left;z-index: 1;border: 3px double #222;">
-                <div style="text-align: center">a-z [ ] \\ ; ' , . / - = enter</div>
+                <div style="text-align: center">a-z [ ] \\ ; ' , . / - = enter ↑ ↓ ← → 空格</div>
                 </div>
             `);
             const keyPanel = q('#quick-do-setting-key-panel');
@@ -1050,14 +1056,15 @@
                 keyPanel.append(this.isNew ? this.getNewKeySettingHTML(inputId, text, value) : this.getKeySettingHTML(inputId, text, value));
                 const input = q(`#${inputId}`);
                 input.on('keydown', e => {
-                    const key = e.key.toLowerCase();
+                    const isGlobalHotKey = this.isGlobalHotKey(e.keyCode);
+                    const key = isGlobalHotKey || e.key.toLowerCase();
                     const isA2Z = e.keyCode >= 65 && e.keyCode <= 90;
                     const isSymbol = "[]\\;',./-=".indexOf(key) > -1;
-                    if ((isA2Z || isSymbol || e.keyCode === this.keyCode.enter) && this.keyCode[key]) {
+                    if ((isGlobalHotKey || isA2Z || isSymbol || e.keyCode === this.keyCode.enter) && this.keyCode[key]) {
                         input.val(key)
                     }
                     const isDelete = e.keyCode == 8 || e.keyCode == 46;
-                    !isDelete && e.preventDefault();
+                    (!isDelete || isGlobalHotKey) && e.preventDefault();
                 }).on('keyup', e => this.saveQuickDoKey(key, input.val())).on('click', e => {
                     input.select();
                     e.preventDefault();
