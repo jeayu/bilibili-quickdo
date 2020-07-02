@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         bilibili  H5播放器快捷操作
 // @namespace    https://github.com/jeayu/bilibili-quickdo
-// @version      0.9.9.7
+// @version      0.9.9.8
 // @description  快捷键设置,回车快速发弹幕,双击全屏,自动选择最高清画质、播放、全屏、关闭弹幕、自动转跳和自动关灯等
 // @author       jeayu
 // @license      MIT
 // @match        *://www.bilibili.com/bangumi/play/ep*
 // @match        *://www.bilibili.com/bangumi/play/ss*
-// @match        *://www.bilibili.com/video/av*
+// @match        *://www.bilibili.com/video/bv*
 // @match        *://www.bilibili.com/watchlater/*
 // @match        *://www.bilibili.com/video/BV*
 // @match        *://www.bilibili.com/cheese/play/ep*
