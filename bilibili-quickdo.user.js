@@ -335,7 +335,7 @@
         },
         fixVideoResize() {
             this.isWidescreen() && !this.hasMiniPlayer() && this.setWidescreenPos();
-            q('#playerWrap').css('height', q('#bofqi').getCss('height'));
+            q('#playerWrap').css('height', q('#bilibiliPlayer ').getCss('height'));
         },
         initPlayerStyle() {
             this.ultraWidescreen();
@@ -374,7 +374,7 @@
             this.removeStyle('#qd-customUltraWidescreenHeight');
             if (this.getCheckboxSetting('customUltraWidescreenHeight') === ON && !this.hasMiniPlayer()) {
                 const clientWidth = document.body.clientWidth;
-                const marginLeft = q('#bofqi').offset().left;
+                const marginLeft = q('#bilibiliPlayer ').offset().left;
                 const clientHeight = document.body.clientHeight * Math.min(this.getVarSetting('ultraWidescreenHeightPercent') / 100, 1);
                 const marginHeight = clientHeight - q(`${this.isBangumi ? '.bilibiliPlayer' : '.player-wrap'}`).parseFloat('height');
                 const css = `
@@ -397,7 +397,7 @@
             this.removeStyle('#qd-ultraWidescreen');
             if (this.getCheckboxSetting('ultraWidescreen') === ON && !this.hasMiniPlayer()) {
                 const clientWidth = document.body.clientWidth;
-                const marginLeft = q('#bofqi').offset().left;
+                const marginLeft = q('#bilibiliPlayer ').offset().left;
                 const css = `
                 .qd-wide-flag .mode-widescreen{width:${clientWidth}px!important;margin-left:-${marginLeft}px!important}
                 ${this.isNew ? '.qd-wide-flag .guide{z-index:0!important}' : ''}
@@ -570,7 +570,7 @@
             window.scrollTo(0, 0);
         },
         bofqiSetOnTop() {
-            const top = q('#bofqi').offset().top;
+            const top = q('#bilibiliPlayer ').offset().top;
             top > 0 && window.scrollTo(0, top);
         },
         playerSetOnTop(isDelay=false) {
@@ -759,7 +759,7 @@
             this.oldControlHide();
         },
         autoHandler() {
-            this.h5Player = q('#bofqi .bilibili-player-video video');
+            this.h5Player = q('#bilibiliPlayer  .bilibili-player-video video');
             if (this.getCheckboxSetting('playAndPause') === ON) {
                 this.getCheckboxSetting('playAndPause') === ON && this.h5Player[0].play();
             }
@@ -1183,7 +1183,7 @@
                         this.reload = true;
                         console.log('bilibili-quickdo init done');
                     } else if (target.hasClass('bilibili-player-video')) {
-                        this.h5Player = q('#bofqi .bilibili-player-video video');
+                        this.h5Player = q('#bilibiliPlayer  .bilibili-player-video video');
                     } else if (this.repeatEnd && this.repeatStart && target.hasClass('bilibili-player-video-time-now')
                                && this.repeatEnd <= this.h5Player[0].currentTime) {
                         this.h5Player[0].currentTime = this.repeatStart;
