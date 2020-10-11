@@ -322,7 +322,7 @@
             },
         },
         bindPlayerEvent() {
-            q('.bilibili-player-video').on('dblclick', () => this.getCheckboxSetting('dblclick') === ON && this.fullscreen());
+            q('.bilibili-player-dm-tip-wrap').on('dblclick', () => this.getCheckboxSetting('dblclick') === ON && this.fullscreen());
             player.addEventListener('video_resize', () => {
                 this.hideSenderBar();
                 q('body').toggleClass('qd-wide-flag', this.isWidescreen());
@@ -732,7 +732,7 @@
                     e.preventDefault();
                 }
             }
-            
+
             Object.keys(this.config.quickDo)
                 .some(key => keyCode === this.getKeyCode(key) && (!this[key]() || !e.preventDefault())) ||
                 keyCode >= this.keyCode['0'] && keyCode <= this.keyCode['9'] &&
@@ -743,7 +743,7 @@
             if (this.getCheckboxSetting('highQuality') === ON || this.getCheckboxSetting('vipHighQuality') === ON) {
                 q('.bilibili-player-video-quality-menu').mouseover().mouseout();
                 const btn = this.isNew ? q('.bui-select-item') : q('.bpui-selectmenu-list-row');
-                let index = this.getCheckboxSetting('highQuality') === ON ? btn.findIndex(e => !q(e).find('.bilibili-player-bigvip')[0]) : 
+                let index = this.getCheckboxSetting('highQuality') === ON ? btn.findIndex(e => !q(e).find('.bilibili-player-bigvip')[0]) :
                     this.getCheckboxSetting('vipHighQualityNot4K') === ON ? btn.findIndex(e => e.textContent != '超清4K大会员') : 0;
                 btn.click(index);
             }
