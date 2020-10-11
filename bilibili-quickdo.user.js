@@ -356,7 +356,9 @@
             if (!this.reload || !this.isNew) {
                 return;
             }
-            this.getCheckboxSetting('danmukuBoxAfterMultiPage') === ON && q('#danmukuBox').after(q('#multi_page')[0]);
+            if (this.getCheckboxSetting('danmukuBoxAfterMultiPage') === ON) {
+                this.isBangumi ? q('#danmukuBox').after(q('#eplist_module')[0]) : q('#danmukuBox').after(q('#multi_page')[0]);
+            }
         },
         rConCss() {
             this.removeStyle('#qd-rCon');
