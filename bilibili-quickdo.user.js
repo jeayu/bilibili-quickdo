@@ -366,7 +366,8 @@
             if (this.getCheckboxSetting('bottomTitle') === ON) {
                 const top = this.getCheckboxSetting('bottomTitle') === ON ? q('.player').parseFloat('height') : q('.player').parseFloat('height') + q('#v_upinfo').parseFloat('margin-bottom') + q('#v_upinfo').parseFloat('height');
                 const css = `
-                .qd-wide-flag .r-con{margin-top:${top}px!important}`;
+                .qd-wide-flag .r-con{margin-top:${top}px!important}
+                .v-wrap .video-info {height: auto!important;padding-top: 15px!important;}`;
                 this.addStyle(css, 'qd-rCon');
             }
         },
