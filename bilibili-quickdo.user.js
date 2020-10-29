@@ -692,13 +692,15 @@
             this.repeatEnd = this.repeatStart = undefined;
             this.showHint(`清除循环点`)
         },
+        setVolume(volume) {
+            player.volume(volume);
+            this.showHint(`音量 ${Math.ceil(player.volume() * 100)}%`);
+        },
         subVolume() {
-            this.h5Player[0].volume = Math.max(this.h5Player[0].volume - (this.getVarSetting('volume') / 100), 0);
-            this.showHint(`音量 ${this.h5Player[0].volume * 100 | 0}%`)
+            this.setVolume(Math.max(player.volume() - (this.getVarSetting('volume') / 100), 0));
         },
         addVolume() {
-            this.h5Player[0].volume = Math.min(this.h5Player[0].volume + (this.getVarSetting('volume') / 100), 1);
-            this.showHint(`音量 ${this.h5Player[0].volume * 100 | 0}%`)
+            this.setVolume(Math.max(player.volume() + (this.getVarSetting('volume') / 100), 0));
         },
         subProgress() {
             this.h5Player[0].currentTime -= this.getVarSetting('videoProgress');
