@@ -7,6 +7,7 @@
 // @license      MIT
 // @match        *://www.bilibili.com/bangumi/play/ep*
 // @match        *://www.bilibili.com/bangumi/play/ss*
+// @match        *://www.bilibili.com/video/av*
 // @match        *://www.bilibili.com/video/bv*
 // @match        *://www.bilibili.com/watchlater/*
 // @match        *://www.bilibili.com/video/BV*
@@ -747,7 +748,7 @@
                 q('.bilibili-player-video-quality-menu').mouseover().mouseout();
                 const btn = this.isNew ? q('.bui-select-item') : q('.bpui-selectmenu-list-row');
                 let index = this.getCheckboxSetting('highQuality') === ON ? btn.findIndex(e => !q(e).find('.bilibili-player-bigvip')[0]) :
-                    this.getCheckboxSetting('vipHighQualityNot4K') === ON ? btn.findIndex(e => e.textContent != '超清4K大会员') : 0;
+                    this.getCheckboxSetting('vipHighQualityNot4K') === ON ? btn.findIndex(e => !e.textContent.includes('4K')) : 0;
                 btn.click(index);
             }
             if (this.getCheckboxSetting('jump') === ON) {
