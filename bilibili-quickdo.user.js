@@ -131,7 +131,6 @@
         playerWide: ".bpx-player-ctrl-wide",
         dmInput: "input.bpx-player-dm-input",
         dmInputFocus: "input.bpx-player-dm-input:focus",
-        playerCurrentTimeClass: "bpx-player-ctrl-time-current",
         playerCurrentTime: ".bpx-player-ctrl-time-current",
         mirror: ".bpx-player-ctrl-setting-mirror input",
         lightOff: ".bpx-player-ctrl-setting-lightoff input",
@@ -235,7 +234,7 @@
             return keyCode >= this.getKeyCode('0') && keyCode <= this.getKeyCode('9');
         },
         getDefaultShortCutStatus(key) {
-            return STORAGE.getDefaultShortCutStatus(key);
+            return STORAGE.getDefaultShortCutStatus(key, this.defaultShortCut[key].status);
         },
         checkDefaultShortCut(keyCode) {
             return Object.entries(this.defaultShortCut)
@@ -257,7 +256,6 @@
             this.h5Player = q(SELECTOR.h5Player);
             this.control = q(SELECTOR.playerControl);
             this.senderBar = q(SELECTOR.senderBarArea);
-            this.volume = this.h5Player[0].volume;
             this.played = false;
             console.log('H5_PLAYER done');
         },
@@ -315,24 +313,22 @@
             this.h5Player[0].volume = volume;
         },
         mute() {
-            if (this.h5Player[0].volume == 0) {
-                this.setVolume(this.volume);
-            } else {
-                this.volume = this.h5Player[0].volume;
-                this.setVolume(0);
-            }
+            this.h5Player[0].muted = !this.h5Player[0].muted;
         },
         subVolume() {
             this.setVolume(Math.max(this.getVolume() - (this.getVarSetting('volume') / 100), 0));
         },
         addVolume() {
-            this.setVolume(Math.max(this.getVolume() + (this.getVarSetting('volume') / 100), 0));
+            this.setVolume(Math.min(this.getVolume() + (this.getVarSetting('volume') / 100), 1));
         },
         subProgress() {
             this.h5Player[0].currentTime -= this.getVarSetting('videoProgress');
         },
         addProgress() {
             this.h5Player[0].currentTime += this.getVarSetting('videoProgress');
+        },
+        offsetTop() {
+            return this.h5Player.offset().top;
         }
     };
     const UI = {
@@ -420,7 +416,7 @@
             return 0;
         },
         isWide() {
-            return q(SELECTOR.playerContainer).attr('data-screen') == WIDESCREEN;
+            return q(SELECTOR.playerContainer).attr('data-screen') == WIDESCREEN || q(SELECTOR.playerWide).hasClass('bpx-state-entered');
         },
         ultraWidescreenCss() {
             this.removeStyle('#qd-ultraWidescreen');
@@ -428,7 +424,7 @@
             const marginLeft = q('#bilibili-player ').offset().left;
             const css = `
             .bpx-player-container[data-screen=wide] {
-                width:${clientWidth}px!important;margin-left:-${marginLeft}px!important
+                width:${clientWidth}px!important;margin-left:-${marginLeft}px!important;z-index: 1000!important;
             }
             `;
             this.addStyle(css, 'qd-ultraWidescreen');
@@ -447,7 +443,14 @@
         },
         bottomTitle() {
             q('#viewbox_report').after(q('#playerWrap')[0]);
-            this.isBottomTitle = true;
+            if (!this.isBottomTitle) {
+                const css = `#viewbox_report {height:auto!important;}`;
+                this.addStyle(css, 'qd-bottomTitle');
+                this.isBottomTitle = true;
+            }
+        },
+        removeFixedHeader() {
+            q('.bili-header').removeClass('fixed-header');
         },
     };
     const REPEAT_CONTROLLER = {
@@ -455,19 +458,18 @@
         repeatEnd: undefined,
         setRepeatStart() {
             this.repeatStart = H5_PLAYER.getCurrentTime();
-            UI.showHint(`起点 ${q(SELECTOR.playerCurrentTime).text()}`)
+            UI.showHint(`起点 ${q(SELECTOR.playerCurrentTime).text()}`);
         },
         setRepeatEnd() {
             this.repeatEnd = H5_PLAYER.getCurrentTime();
-            UI.showHint(`终点 ${q(SELECTOR.playerCurrentTime).text()}`)
+            UI.showHint(`终点 ${q(SELECTOR.playerCurrentTime).text()}`);
         },
         resetRepeat() {
             this.repeatEnd = this.repeatStart = undefined;
             UI.showHint(`清除循环点`)
         },
-        check(mutationTarget) {
-            return this.repeatEnd && this.repeatStart && mutationTarget.hasClass(SELECTOR.playerCurrentTimeClass)
-                       && this.repeatEnd <= H5_PLAYER.getCurrentTime();
+        check() {
+            return this.repeatEnd && this.repeatStart && this.repeatEnd <= H5_PLAYER.getCurrentTime();
         },
         start() {
             H5_PLAYER.setVideoCurrentTime(this.repeatStart);
@@ -544,10 +546,10 @@
             });
         },
         getControllerConfigStatus(key) {
-            return STORAGE.getControllerConfigStatus(key);
+            return STORAGE.getControllerConfigStatus(key, this.config[key].status);
         },
         getQuickDoKeyCode(quickDoKey) {
-            return KEY_BOARD.getKeyCode(STORAGE.getQuickDoKey(quickDoKey));
+            return KEY_BOARD.getKeyCode(STORAGE.getQuickDoKey(quickDoKey, this.quickDo[quickDoKey].value));
         },
         focusPlayer() {
             H5_PLAYER.control.click();
@@ -585,9 +587,6 @@
         ultraWidescreen() {
             this.mode(WIDESCREEN);
             UI.ultraWidescreenCss();
-        },
-        romveFixedHeader() {
-            q('.bili-header').removeClass('fixed-header');
         },
         // ---------------
         settingPanel() {
@@ -644,6 +643,7 @@
             }).catch(() => {});
         },
         mirror() {
+            UI.setH5PlayerRransform('');
             q(SELECTOR.mirror).click();
         },
         danmuType(selector) {
@@ -656,7 +656,7 @@
             }
         },
         danmuTop() {
-            this.danmuType(SELECTOR.dmTypeTop)
+            this.danmuType(SELECTOR.dmTypeTop);
         },
         danmuBottom() {
             this.danmuType(SELECTOR.dmTypeBottom);
@@ -671,11 +671,9 @@
             this.danmuType(SELECTOR.dmTypeSpecial);
         },
         rotateRight() {
-            // 向右旋转
             UI.h5PlayerRotate(1);
         },
         rotateLeft() {
-            // 向左旋转
             UI.h5PlayerRotate(-1);
         },
         isLightOff() {
@@ -701,9 +699,8 @@
             q(SELECTOR.jumpContent).click();
         },
         playerSetOnTop() {
-            q('.bili-header').removeClass('fixed-header');
             this.scroll2Top();
-            window.scrollTo(0, q(SELECTOR.h5Player).offset().top);
+            window.scrollTo(0, H5_PLAYER.offsetTop());
         },
         setRepeatStart() {
             REPEAT_CONTROLLER.setRepeatStart();
@@ -734,8 +731,8 @@
         playerCheckbox: {
             options: {
                 hideSenderBar: { text: '隐藏弹幕栏', status: ON, fn: 'hideOrShowSenderBar', tips: '发弹幕快捷键可显示' },
-                widescreenScroll2Top: { text: '宽屏时回到顶部', status: ON, ban:['widescreenSetOnTop'], fn: 'setWidescreenPos' },
-                widescreenSetOnTop: { text: '宽屏时播放器置顶部', status: OFF, ban:['widescreenScroll2Top'], fn: 'setWidescreenPos' },
+                widescreenScroll2Top: { text: '宽屏时回到顶部', status: OFF, ban:['widescreenPlayerSetOnTop'], fn: 'setWidescreenPos' },
+                widescreenPlayerSetOnTop: { text: '宽屏时播放器置顶部', status: ON, ban:['widescreenScroll2Top'], fn: 'setWidescreenPos' },
                 lightOffWhenPlaying: { text: '播放时自动关灯', status: OFF, },
                 lightOnWhenPause: { text: '暂停时自动开灯', status: OFF, },
                 screenWhenPause: { text: '暂停还原屏幕', status: OFF, },
@@ -747,8 +744,8 @@
         startCheckbox: {
             options: {
                 lightOff: { text: '自动关灯', status: OFF },
-                webFullscreen: { text: '自动网页全屏', status: OFF, ban:['fullscreen', 'widescreen'] },
-                widescreen: { text: '自动宽屏', status: ON, ban:['webFullscreen', 'fullscreen'] },
+                webFullscreen: { text: '自动网页全屏', status: OFF, ban:['widescreen'] },
+                widescreen: { text: '自动宽屏', status: ON, ban:['webFullscreen'] },
                 highQuality: { text: '自动最高画质', status: ON, ban:['vipHighQuality'] },
                 vipHighQuality: { text: '自动最高画质(大会员使用)', status: OFF, ban:['highQuality'] },
                 vipHighQualityNot4K: { text: '自动最高画质不选择4K', status: OFF },
@@ -766,13 +763,13 @@
             btn: '播放结束自动设置',
         },
         checkPlayingSetting(key) {
-            return STORAGE.checkPlayingSetting(key);
+            return STORAGE.checkPlayingSetting(key, this.startCheckbox.options[key].status);
         },
         checkPlayerSetting(key) {
-            return STORAGE.checkPlayerSetting(key);
+            return STORAGE.checkPlayerSetting(key, this.playerCheckbox.options[key].status);
         },
         checkEndedSetting(key) {
-            return STORAGE.checkEndedSetting(key);
+            return STORAGE.checkEndedSetting(key, this.endCheckbox.options[key].status);
         },
         trigger(mutation, target) {
             if (target.hasClass('bpx-player-control-bottom-right')) {
@@ -783,8 +780,6 @@
                 }
             } else if (target.hasClass('bpx-player-state-buff-icon')) {
                 UI.rConCss();
-            } else if (REPEAT_CONTROLLER.check(target)) {
-                REPEAT_CONTROLLER.start();
             }
         },
         attributesTrigger() {
@@ -793,9 +788,9 @@
         adjustUI() {
             this.checkPlayerSetting('ultraWidescreen') && UI.ultraWidescreenCss();
             if (this.checkPlayerSetting('widescreenScroll2Top') && UI.isWide()) {
-                CONTROLLER.playerSetOnTop();
-            } else if (this.checkPlayerSetting('widescreenSetOnTop') && UI.isWide()) {
                 CONTROLLER.scroll2Top();
+            } else if (this.checkPlayerSetting('widescreenPlayerSetOnTop') && UI.isWide()) {
+                CONTROLLER.playerSetOnTop();
             }
             UI.rConCss();
         },
@@ -804,12 +799,14 @@
                 this.adjustUI();
             });
 
-
             H5_PLAYER.addEventListener('loadeddata', () => {
                 this.checkPlayerSetting('hideSenderBar') && UI.hideSenderBar();
                 this.checkPlayerSetting('bottomTitle') && UI.bottomTitle();
                 this.checkPlayingSetting('moreDescribe') && this.moreDescribe();
                 this.playStartMode();
+            });
+            H5_PLAYER.addEventListener('timeupdate', () => {
+                REPEAT_CONTROLLER.check() && REPEAT_CONTROLLER.start();
             });
             H5_PLAYER.addPlayingEvent(() => {
                 if (!H5_PLAYER.played) {
@@ -841,7 +838,6 @@
                 CONTROLLER.mode(WEBFULLSCREEN);
             } else if (this.checkPlayingSetting('widescreen')) {
                 CONTROLLER.mode(WIDESCREEN);
-                UI.rConCss(false);
             }
         },
         videoQuality() {
@@ -863,23 +859,23 @@
     };
     const STORAGE = {
         version: 'v1',
-        getDefaultShortCutStatus(key) {
-            return this.get('defaultShortCut', key, KEY_BOARD.defaultShortCut[key].status);
+        getDefaultShortCutStatus(key, defaultValue) {
+            return this.get('defaultShortCut', key, defaultValue);
         },
-        getQuickDoKey(quickDoKey) {
-            return this.get('quickDo', quickDoKey, CONTROLLER.quickDo[quickDoKey].value);
+        getQuickDoKey(quickDoKey, defaultValue) {
+            return this.get('quickDo', quickDoKey, defaultValue);
         },
-        getControllerConfigStatus(key) {
-            return this.get('controllerConfig', key, CONTROLLER.config[key].status);
+        getControllerConfigStatus(key, defaultValue) {
+            return this.get('controllerConfig', key, defaultValue);
         },
-        checkPlayingSetting(key) {
-            return this.get('startCheckbox', key, AUTOMATON.startCheckbox.options[key].status) === ON;
+        checkPlayingSetting(key, defaultValue) {
+            return this.get('startCheckbox', key, defaultValue) === ON;
         },
-        checkPlayerSetting(key) {
-            return this.get('playerCheckbox', key, AUTOMATON.playerCheckbox.options[key].status) === ON;
+        checkPlayerSetting(key, defaultValue) {
+            return this.get('playerCheckbox', key, defaultValue) === ON;
         },
-        checkEndedSetting(key) {
-            return this.get('endCheckbox', key, AUTOMATON.endCheckbox.options[key].status) === ON;
+        checkEndedSetting(key, defaultValue) {
+            return this.get('endCheckbox', key, defaultValue) === ON;
         },
         gmKey(configName, key) {
             return `${this.version}:${configName}:${key}`;
@@ -924,7 +920,6 @@
                 </div>
                 <div id='${araeId}' class="bpx-player-hotkey-panel-area" style="touch-action: pan-x; user-select: none; -webkit-user-drag: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0);min-height: 430px;padding-left: 35px;">
                     <div class="bpx-player-hotkey-panel-content" style="transition-timing-function: cubic-bezier(0.165, 0.84, 0.44, 1); transition-duration: 0ms; transform: translate(0px, 0px) scale(1) translateZ(0px);">
-
                     </div>
                 </div>
             </div>
@@ -943,13 +938,13 @@
             let item = `
             <div style="min-width: 185px;float: left;height: 24px;line-height: 24px;text-align: left;">
                 <span>
-                <input id="${checkboxId}" type="checkbox" aria-label="${text}" ${checked}></input>
+                <input id="${checkboxId}" type="checkbox" ${checked}></input>
                 </span>
                 <span>${text}</span>
             </div>`
             this.settingPanelArea.append(item);
-            q(`#${checkboxId}`).on('click', e => {
-                STORAGE.save(configName, key, e.toElement.checked ? ON : OFF);
+            q(`#${checkboxId}`).on('click', function(e) {
+                STORAGE.save(configName, key, this.checked ? ON : OFF);
             });
         },
         addInputSettingItem(configName, key, value, text) {
@@ -958,7 +953,7 @@
             let item = `
             <div style="min-width: 185px;float: left;height: 24px;line-height: 24px;text-align: left;">
                 <span>
-                <input id="${inputId}" type="input" aria-label="${text}" value="${val}" style="width: 35px;height: 10px;color: black;text-align: center;"></input>
+                <input id="${inputId}" type="input" value="${val}" style="width: 35px;height: 12px;color: black;text-align: center;"></input>
                 </span>
                 <span>${text}</span>
             </div>`
@@ -969,7 +964,7 @@
                 const key = isGlobalHotKey || e.key.toLowerCase();
                 const isA2Z = e.keyCode >= 65 && e.keyCode <= 90;
                 const isSymbol = "[]\\;',./-=".indexOf(key) > -1;
-                if ((isGlobalHotKey || isA2Z || isSymbol || e.keyCode === this.keyCode.enter) && KEY_BOARD.getKeyCode(key)) {
+                if ((isGlobalHotKey || isA2Z || isSymbol || e.keyCode === KEY_BOARD.keyCode.enter) && KEY_BOARD.getKeyCode(key)) {
                     input.val(key);
                 }
                 const isDelete = e.keyCode == 8 || e.keyCode == 46;
@@ -994,6 +989,9 @@
     new MutationObserver((mutations, observer) => {
         mutations.forEach(mutation => {
             const target = q(mutation.target);
+            if (target.hasClass('fixed-header')) {
+                UI.removeFixedHeader();
+            }
             if (target.hasClass('header-v2')) {
                 if (H5_PLAYER.h5Player) {
                     H5_PLAYER.played = false;
